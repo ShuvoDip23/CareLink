@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareLink - Test Page</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1E3A8A',
+                        'primary-dark': '#1e40af',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-4xl mx-auto space-y-8">
+        <h1 class="text-4xl font-bold text-slate-900">CareLink Function Test</h1>
+        
+        <!-- Auth Status -->
+        <div class="bg-white rounded-lg p-6 shadow">
+            <h2 class="text-xl font-bold mb-4">Authentication Status</h2>
+            <div id="authStatus" class="text-slate-600">Checking...</div>
+            <button onclick="testAuth()" class="mt-4 px-4 py-2 bg-primary text-white rounded-lg">
+                Test Auth
+            </button>
+        </div>
+
+        <!-- Navbar Test -->
+        <div class="bg-white rounded-lg p-6 shadow">
+            <h2 class="text-xl font-bold mb-4">Navbar Test</h2>
+            <ul id="navMenu" class="flex gap-4">
+                <li><a href="index.html" class="text-primary">Home</a></li>
+                <li><a href="doctors.html">Doctors</a></li>
+                <!-- Auth links will be added here -->
+            </ul>
+        </div>
+
+        <!-- Chat Button Test -->
+        <div class="bg-white rounded-lg p-6 shadow">
+            <h2 class="text-xl font-bold mb-4">Chat Function Test</h2>
+            
+            <div class="space-y-4">
+                <button onclick="openChatbot()" class="px-6 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary-dark">
+                    Test 1: Button with onclick
+                </button>
+                
+                <br>
+                
+                <a href="#" onclick="openChatbot(); return false;" class="inline-block px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">
+                    Test 2: Link with onclick + return false
+                </a>
+                
+                <br>
+                
+                <a href="javascript:void(0);" onclick="openChatbot()" class="inline-block px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700">
+                    Test 3: Link with javascript:void(0)
+                </a>
+            </div>
+            
+            <div id="chatTest" class="mt-4 p-4 bg-gray-100 rounded">
+                Click any button above. You should see a message here.
+            </div>
+        </div>
+
+        <!-- Console Log -->
+        <div class="bg-white rounded-lg p-6 shadow">
+            <h2 class="text-xl font-bold mb-4">Console Log</h2>
+            <pre id="consoleLog" class="bg-slate-900 text-green-400 p-4 rounded text-sm overflow-auto max-h-64"></pre>
+        </div>
+    </div>
+
+    <!-- Chat Widget (simplified) -->
+    <div id="chatWidget" class="hidden fixed bottom-6 right-6 w-96 bg-white rounded-2xl shadow-2xl border p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold">Chat Widget</h3>
+            <button onclick="closeChatbot()" class="text-red-600 font-bold">X</button>
+        </div>
+        <div id="chatMessages" class="bg-gray-50 p-4 rounded h-64 overflow-auto mb-4">
+            <p class="text-sm">Chat is open!</p>
+        </div>
+        <button onclick="startConsultation()" id="startBtn" class="w-full py-2 bg-primary text-white rounded">
+            Start Consultation
+        </button>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:5000';
+        let isAuthenticated = false;
+        let currentUser = null;
+        let logs = [];
+
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.push(`[${timestamp}] ${message}`);
+            document.getElementById('consoleLog').textContent = logs.join('\n');
+            console.log(message);
+        }
+
+        // Auth functions
+        async function checkAuth() {
+            log('🔍 Checking authentication...');
+            try {
+                const response = await fetch(`${API_URL}/api/me`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                
+                if (data.authenticated) {
+                    isAuthenticated = true;
+                    currentUser = data.user;
+                    log(`✅ Authenticated as: ${data.user.name}`);
+                    document.getElementById('authStatus').innerHTML = `
+                        <div class="text-green-600 font-semibold">✅ Logged in as: ${data.user.name}</div>
+                        <button onclick="logout()" class="mt-2 px-4 py-2 bg-red-600 text-white rounded">Logout</button>
+                    `;
+                    return data.user;
+                } else {
+                    isAuthenticated = false;
+                    log('❌ Not authenticated');
+                    document.getElementById('authStatus').innerHTML = `
+                        <div class="text-red-600 font-semibold">❌ Not logged in</div>
+                        <a href="login.html" class="inline-block mt-2 px-4 py-2 bg-primary text-white rounded">Login</a>
+                    `;
+                    return null;
+                }
+            } catch (error) {
+                log(`❌ Auth check error: ${error.message}`);
+                document.getElementById('authStatus').innerHTML = `
+                    <div class="text-red-600">Error: ${error.message}</div>
+                    <div class="text-sm text-gray-600 mt-2">Is the backend running at ${API_URL}?</div>
+                `;
+                return null;
+            }
+        }
+
+        async function logout() {
+            log('🚪 Logging out...');
+            await fetch(`${API_URL}/api/logout`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            isAuthenticated = false;
+            currentUser = null;
+            await checkAuth();
+            updateNavbar();
+        }
+
+        async function updateNavbar() {
+            log('📋 Updating navbar...');
+            const user = await checkAuth();
+            const navMenu = document.getElementById('navMenu');
+            
+            const existingAuthLinks = navMenu.querySelectorAll('.auth-link');
+            existingAuthLinks.forEach(link => link.remove());
+            
+            if (user) {
+                const li = document.createElement('li');
+                li.className = 'auth-link';
+                li.innerHTML = `<span class="font-semibold">${user.name}</span>`;
+                navMenu.appendChild(li);
+                
+                const logoutLi = document.createElement('li');
+                logoutLi.className = 'auth-link';
+                logoutLi.innerHTML = `<a href="#" onclick="logout(); return false;" class="text-red-600">Logout</a>`;
+                navMenu.appendChild(logoutLi);
+            } else {
+                const loginLi = document.createElement('li');
+                loginLi.className = 'auth-link';
+                loginLi.innerHTML = `<a href="login.html" class="text-primary">Login</a>`;
+                navMenu.appendChild(loginLi);
+                
+                const registerLi = document.createElement('li');
+                registerLi.className = 'auth-link';
+                registerLi.innerHTML = `<a href="register.html" class="bg-primary text-white px-4 py-2 rounded">Sign Up</a>`;
+                navMenu.appendChild(registerLi);
+            }
+            log('✅ Navbar updated');
+        }
+
+        function testAuth() {
+            checkAuth();
+            updateNavbar();
+        }
+
+        // Chat functions
+        function openChatbot() {
+            log('💬 openChatbot() called');
+            document.getElementById('chatTest').innerHTML = '✅ openChatbot() was called successfully!';
+            
+            const chatWidget = document.getElementById('chatWidget');
+            chatWidget.classList.remove('hidden');
+            
+            if (!isAuthenticated) {
+                log('⚠️ User not authenticated - showing login prompt');
+                document.getElementById('chatMessages').innerHTML = `
+                    <div class="text-center">
+                        <p class="text-red-600 font-semibold mb-4">Please login first</p>
+                        <a href="login.html" class="bg-primary text-white px-4 py-2 rounded inline-block">Login</a>
+                    </div>
+                `;
+                document.getElementById('startBtn').style.display = 'none';
+            } else {
+                log('✅ User authenticated - chat ready');
+            }
+        }
+
+        function closeChatbot() {
+            log('❌ closeChatbot() called');
+            document.getElementById('chatWidget').classList.add('hidden');
+        }
+
+        async function startConsultation() {
+            log('🏥 startConsultation() called');
+            
+            if (!isAuthenticated) {
+                alert('Please login first!');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/session/start`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                log(`✅ Session started: ${data.session_id}`);
+                
+                document.getElementById('chatMessages').innerHTML = `
+                    <p class="text-sm mb-2"><strong>Bot:</strong> ${data.message}</p>
+                `;
+            } catch (error) {
+                log(`❌ Error: ${error.message}`);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Page loaded');
+            log('✅ All functions available');
+            checkAuth();
+            updateNavbar();
+        });
+    </script>
+</body>
+</html>

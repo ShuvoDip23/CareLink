@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Details - CareLink</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <span class="logo">🏥</span>
+                <span class="brand-name">CareLink</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="doctors.html">Find Doctors</a></li>
+                <li><a href="appointments.html">My Appointments</a></li>
+                <li><a href="admin_add_doctor.html">Add Doctors</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Doctor Details Section -->
+    <section class="doctor-detail-section">
+        <div class="container">
+            <a href="doctors.html" class="back-link">← Back to Doctors</a>
+            
+            <div id="loadingSpinner" class="loading">
+                <div class="spinner"></div>
+                <p>Loading doctor details...</p>
+            </div>
+
+            <div id="doctorDetail" class="doctor-detail-container" style="display: none;">
+                <div class="doctor-info-card">
+                    <div class="doctor-avatar">👨‍⚕️</div>
+                    <div class="doctor-info">
+                        <h1 id="doctorName"></h1>
+                        <p class="specialty" id="doctorSpecialty"></p>
+                        <div class="rating" id="doctorRating"></div>
+                        <div class="info-row">
+                            <span class="info-label">🏥 Hospital:</span>
+                            <span id="doctorHospital"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">📍 Location:</span>
+                            <span id="doctorLocation"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">📞 Phone:</span>
+                            <span id="doctorPhone"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">💰 Consultation Fee:</span>
+                            <span id="doctorFee" class="fee"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Booking Form -->
+                <div class="booking-card">
+                    <h2>Book an Appointment</h2>
+                    <form id="bookingForm" onsubmit="bookAppointment(event)">
+                        <div class="form-group">
+                            <label for="patientName">Your Name *</label>
+                            <input type="text" id="patientName" required placeholder="Enter your full name">
+                        </div>
+                        <div class="form-group">
+                            <label for="appointmentDate">Appointment Date *</label>
+                            <input type="date" id="appointmentDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="appointmentTime">Preferred Time *</label>
+                            <select id="appointmentTime" required>
+                                <option value="">Select time</option>
+                                <option value="09:00 AM">09:00 AM</option>
+                                <option value="10:00 AM">10:00 AM</option>
+                                <option value="11:00 AM">11:00 AM</option>
+                                <option value="12:00 PM">12:00 PM</option>
+                                <option value="02:00 PM">02:00 PM</option>
+                                <option value="03:00 PM">03:00 PM</option>
+                                <option value="04:00 PM">04:00 PM</option>
+                                <option value="05:00 PM">05:00 PM</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="reason">Reason for Visit *</label>
+                            <textarea id="reason" rows="4" required placeholder="Briefly describe your symptoms or reason for consultation"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Book Appointment</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-icon success">✓</div>
+            <h2>Appointment Booked Successfully!</h2>
+            <p>Your appointment has been confirmed. You will receive a confirmation email shortly.</p>
+            <div class="modal-actions">
+                <button onclick="closeModal()" class="btn btn-secondary">Close</button>
+                <a href="appointments.html" class="btn btn-primary">View My Appointments</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>🏥 CareLink</h4>
+                    <p>Your trusted healthcare partner for quality medical services.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="doctors.html">Find Doctors</a></li>
+                        <li><a href="appointments.html">My Appointments</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Emergency</h4>
+                    <p>For medical emergencies, call 911 or visit your nearest emergency room.</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 CareLink. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Chat Widget -->
+    <div id="chatWidget" class="chat-widget">
+        <div class="chat-header">
+            <div class="chat-header-content">
+                <span class="chat-icon">🤖</span>
+                <div>
+                    <h3>Health Assistant</h3>
+                    <span class="chat-status">Online</span>
+                </div>
+            </div>
+            <button onclick="closeChatbot()" class="close-chat">×</button>
+        </div>
+        <div id="chatMessages" class="chat-messages">
+            <div class="bot-message">
+                <div class="message-content">
+                    Hello! I'm your Health Assistant. Click "Start Consultation" to begin.
+                </div>
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Type your message..." disabled>
+            <button onclick="sendMessage()" id="sendBtn" disabled>Send</button>
+        </div>
+        <div class="chat-actions">
+            <button onclick="startConsultation()" id="startBtn" class="btn-start">Start Consultation</button>
+        </div>
+    </div>
+
+    <!-- Floating Chat Button -->
+    <button onclick="toggleChatbot()" class="chat-float-btn" id="chatFloatBtn">
+        <span class="chat-btn-icon">💬</span>
+        <span class="chat-btn-text">Health Assistant</span>
+    </button>
+
+    <script src="js/main.js"></script>
+    <script src="js/doctor-detail.js"></script>
+    <script src="js/chat.js"></script>
+</body>
+</html>

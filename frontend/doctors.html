@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Doctors - CareLink</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <span class="logo">🏥</span>
+                <span class="brand-name">CareLink</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="doctors.html" class="active">Find Doctors</a></li>
+                <li><a href="appointments.html">My Appointments</a></li>
+                 <li><a href="admin_add_doctor.html">Add Doctors</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Search Section -->
+    <section class="search-section">
+        <div class="container">
+            <h1>Find Your Doctor</h1>
+            <div class="search-filters">
+                <div class="filter-group">
+                    <label for="specialtyFilter">Specialty</label>
+                    <select id="specialtyFilter" onchange="filterDoctors()">
+                        <option value="">All Specialties</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="searchInput">Search by Name</label>
+                    <input type="text" id="searchInput" placeholder="Enter doctor name..." oninput="filterDoctors()">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Doctors List -->
+    <section class="doctors-section">
+        <div class="container">
+            <div id="loadingSpinner" class="loading">
+                <div class="spinner"></div>
+                <p>Loading doctors...</p>
+            </div>
+            <div id="doctorsList" class="doctors-grid"></div>
+            <div id="noResults" class="no-results" style="display: none;">
+                <span style="font-size: 48px;">🔍</span>
+                <p>No doctors found matching your criteria.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>🏥 CareLink</h4>
+                    <p>Your trusted healthcare partner for quality medical services.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="doctors.html">Find Doctors</a></li>
+                        <li><a href="appointments.html">My Appointments</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Emergency</h4>
+                    <p>For medical emergencies, call 911 or visit your nearest emergency room.</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 CareLink. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Chat Widget -->
+    <div id="chatWidget" class="chat-widget">
+        <div class="chat-header">
+            <div class="chat-header-content">
+                <span class="chat-icon">🤖</span>
+                <div>
+                    <h3>Health Assistant</h3>
+                    <span class="chat-status">Online</span>
+                </div>
+            </div>
+            <button onclick="closeChatbot()" class="close-chat">×</button>
+        </div>
+        <div id="chatMessages" class="chat-messages">
+            <div class="bot-message">
+                <div class="message-content">
+                    Hello! I'm your Health Assistant. Click "Start Consultation" to begin.
+                </div>
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Type your message..." disabled>
+            <button onclick="sendMessage()" id="sendBtn" disabled>Send</button>
+        </div>
+        <div class="chat-actions">
+            <button onclick="startConsultation()" id="startBtn" class="btn-start">Start Consultation</button>
+        </div>
+    </div>
+
+    <!-- Floating Chat Button -->
+    <button onclick="toggleChatbot()" class="chat-float-btn" id="chatFloatBtn">
+        <span class="chat-btn-icon">💬</span>
+        <span class="chat-btn-text">Health Assistant</span>
+    </button>
+
+    <script src="js/main.js"></script>
+    <script src="js/doctors.js"></script>
+    <script src="js/chat.js"></script>
+</body>
+</html>
