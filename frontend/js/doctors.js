@@ -1,58 +1,46 @@
-// Doctors page JavaScript
 let allDoctors = [];
 let allSpecialties = [];
 
-// Fetch doctors and populate the page
 async function fetchDoctors() {
   showLoading();
 
   try {
-    const response = await fetch(`${API_BASE_URL}/doctors`);
-    if (!response.ok) throw new Error("Failed to fetch doctors");
-
-    allDoctors = await response.json();
-    displayDoctors(allDoctors);
-
-    // Fetch specialties for filter
+    allDoctors = await getJson("/doctors");
     await fetchSpecialties();
-
-    // Check if there's a specialty filter in URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const specialty = urlParams.get("specialty");
-    if (specialty) {
-      document.getElementById("specialtyFilter").value = specialty;
-      filterDoctors();
-    }
+    applyUrlSpecialty();
+    filterDoctors();
   } catch (error) {
     console.error("Error fetching doctors:", error);
-    document.getElementById("doctorsList").innerHTML = `
-            <div class="no-results">
-                <span style="font-size: 48px;">⚠️</span>
-                <p>Failed to load doctors. Please try again later.</p>
-            </div>
-        `;
+    const doctorsList = document.getElementById("doctorsList");
+    if (doctorsList) {
+      doctorsList.innerHTML = `
+        <div class="no-results-card">
+          <span class="empty-icon">${svgIcon("shield")}</span>
+          <h3>Failed to load doctors</h3>
+          <p>Please check that the backend is running at ${API_ORIGIN}.</p>
+        </div>
+      `;
+    }
   } finally {
     hideLoading();
   }
 }
 
-// Fetch specialties for filter dropdown
 async function fetchSpecialties() {
   try {
-    const response = await fetch(`${API_BASE_URL}/specialties`);
-    if (!response.ok) throw new Error("Failed to fetch specialties");
-
-    allSpecialties = await response.json();
+    allSpecialties = await getJson("/specialties");
     populateSpecialtyFilter();
   } catch (error) {
     console.error("Error fetching specialties:", error);
   }
 }
 
-// Populate specialty filter dropdown
 function populateSpecialtyFilter() {
   const filter = document.getElementById("specialtyFilter");
-  allSpecialties.forEach((specialty) => {
+  if (!filter) return;
+
+  filter.innerHTML = '<option value="">All specialties</option>';
+  [...allSpecialties].sort().forEach((specialty) => {
     const option = document.createElement("option");
     option.value = specialty;
     option.textContent = specialty;
@@ -60,10 +48,23 @@ function populateSpecialtyFilter() {
   });
 }
 
-// Display doctors in grid
+function applyUrlSpecialty() {
+  const specialty = new URLSearchParams(window.location.search).get("specialty");
+  const specialtyFilter = document.getElementById("specialtyFilter");
+  if (specialty && specialtyFilter) {
+    specialtyFilter.value = specialty;
+  }
+}
+
+function formatExperienceLabel(experienceYears) {
+  const years = Number(experienceYears || 0);
+  return years > 0 ? `${years} years experience` : "Experience not updated";
+}
+
 function displayDoctors(doctors) {
   const doctorsList = document.getElementById("doctorsList");
   const noResults = document.getElementById("noResults");
+  if (!doctorsList || !noResults) return;
 
   if (doctors.length === 0) {
     doctorsList.innerHTML = "";
@@ -72,69 +73,75 @@ function displayDoctors(doctors) {
   }
 
   noResults.style.display = "none";
-
   doctorsList.innerHTML = doctors
-    .map(
-      (doctor) => `
-        <a href="doctor.html?id=${doctor.id}" class="doctor-card">
-            <div class="doctor-header">
-                <div class="doctor-avatar">👨‍⚕️</div>
-                <div class="doctor-title">
-                    <h3>${doctor.name}</h3>
-                    <p class="specialty">${doctor.specialty}</p>
-                </div>
+    .map((doctor) => {
+      const rating = Number(doctor.rating || 0).toFixed(1);
+      return `
+        <a href="doctor.html?id=${doctor.id}" class="doctor-card-new reveal">
+          <div class="doctor-card-top">
+            <div class="doctor-card-identity">
+              <div class="doctor-photo">${renderDoctorIcon()}</div>
+              <div class="doctor-top-info">
+                <h3>${escapeHtml(doctor.name)}</h3>
+                <span class="doctor-specialty-badge">${escapeHtml(doctor.specialty)}</span>
+              </div>
             </div>
-            <div class="doctor-details">
-                <div class="detail-row">
-                    <span>🏥</span>
-                    <span>${doctor.hospital}</span>
-                </div>
-                <div class="detail-row">
-                    <span>📍</span>
-                    <span>${doctor.location}</span>
-                </div>
-                <div class="detail-row">
-                    <span>📞</span>
-                    <span>${doctor.phone}</span>
-                </div>
-                <div class="detail-row">
-                    <div class="rating">
-                        
-                        <span>${doctor.rating}</span>
-                        <span>⭐</span>
-                    </div>
-                    <span class="fee">${doctor.fee}</span>
-                </div>
+            <span class="availability-badge">Available</span>
+          </div>
+
+          <div class="doctor-meta-list">
+            <div class="doctor-meta-item">
+              ${svgIcon("stethoscope")}
+              <span>${escapeHtml(doctor.hospital)}</span>
             </div>
+            <div class="doctor-meta-item">
+              ${svgIcon("map")}
+              <span>${escapeHtml(doctor.location)}</span>
+            </div>
+            <div class="doctor-meta-item">
+              ${svgIcon("calendar")}
+              <span>${escapeHtml(formatExperienceLabel(doctor.experience_years))}</span>
+            </div>
+          </div>
+
+          <div class="doctor-card-bottom">
+            <span class="doctor-rating-row">
+              <span class="stars">${renderStars(rating)}</span>
+              <span>${escapeHtml(rating)}</span>
+            </span>
+            <span class="doctor-fee-pill">${escapeHtml(formatFee(doctor.fee))}</span>
+          </div>
+
+          <div class="doctor-card-cta">
+            <span>View Profile</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </div>
         </a>
-    `,
-    )
+      `;
+    })
     .join("");
+
+  observeRevealElements(doctorsList);
 }
 
-// Filter doctors based on specialty and search query
 function filterDoctors() {
-  const specialty = document.getElementById("specialtyFilter").value;
-  const searchQuery = document
-    .getElementById("searchInput")
-    .value.toLowerCase();
+  const specialty = document.getElementById("specialtyFilter")?.value || "";
+  const searchQuery = (document.getElementById("searchInput")?.value || "").toLowerCase().trim();
 
-  let filtered = allDoctors;
+  let filtered = [...allDoctors];
 
   if (specialty) {
     filtered = filtered.filter((doctor) => doctor.specialty === specialty);
   }
 
   if (searchQuery) {
-    filtered = filtered.filter((doctor) =>
-      doctor.name.toLowerCase().includes(searchQuery),
-    );
+    filtered = filtered.filter((doctor) => {
+      const haystack = `${doctor.name} ${doctor.specialty} ${doctor.hospital} ${doctor.location}`.toLowerCase();
+      return haystack.includes(searchQuery);
+    });
   }
 
   displayDoctors(filtered);
 }
 
-// Initialize on page load
-document.addEventListener("DOMContentLoaded", function () {
-  fetchDoctors();
-});
+document.addEventListener("DOMContentLoaded", fetchDoctors);

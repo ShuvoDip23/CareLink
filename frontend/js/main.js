@@ -299,7 +299,7 @@ function setupEmergencyAssist(user) {
         <div id="emergencyFallback" class="emergency-fallback hidden">
           <label for="emergencyZoneSelect">Choose a Rajshahi zone</label>
           <select id="emergencyZoneSelect">
-            <option value="">Show all demo providers</option>
+            <option value="">Show all listed providers</option>
           </select>
           <div id="emergencyProviderList" class="emergency-provider-list"></div>
         </div>
@@ -343,7 +343,7 @@ async function openEmergencyAssist() {
     emergencyState.providers = await getJson("/emergency/providers");
     populateEmergencyZones();
   } catch (error) {
-    setEmergencyStatus(error.message || "Could not load demo emergency providers.", true);
+    setEmergencyStatus(error.message || "Could not load emergency providers.", true);
     return;
   }
 
@@ -389,10 +389,10 @@ function requestEmergencyLocation() {
     async (position) => {
       emergencyState.latitude = position.coords.latitude;
       emergencyState.longitude = position.coords.longitude;
-      setEmergencyStatus("Finding the nearest demo emergency provider...");
+      setEmergencyStatus("Finding the nearest listed emergency provider...");
       await loadNearestEmergencyProvider(emergencyState.latitude, emergencyState.longitude);
     },
-    () => showEmergencyFallback("Location permission was denied. Choose a Rajshahi zone or view all demo providers."),
+    () => showEmergencyFallback("Location permission was denied. Choose a Rajshahi zone or view all listed providers."),
     { enableHighAccuracy: true, timeout: 9000, maximumAge: 60000 },
   );
 }
@@ -406,7 +406,7 @@ async function loadNearestEmergencyProvider(latitude, longitude) {
     emergencyState.selectedProvider = result.provider;
     emergencyState.distanceKm = result.distance_km;
     renderEmergencyProviderCard(result.provider, result.distance_km);
-    setEmergencyStatus("Nearest demo emergency provider found.");
+    setEmergencyStatus("Nearest listed emergency provider found.");
     await saveEmergencyAlert();
   } catch (error) {
     showEmergencyFallback(error.message || "Could not calculate nearest provider. Choose a Rajshahi zone below.");
@@ -461,7 +461,7 @@ function populateEmergencyZones() {
   if (!select) return;
 
   const zones = [...new Set(emergencyState.providers.map((provider) => provider.zone))];
-  select.innerHTML = '<option value="">Show all demo providers</option>';
+  select.innerHTML = '<option value="">Show all listed providers</option>';
   zones.forEach((zone) => {
     const option = document.createElement("option");
     option.value = zone;
@@ -503,7 +503,7 @@ function renderEmergencyProviderList(zone) {
       emergencyState.latitude = provider.latitude;
       emergencyState.longitude = provider.longitude;
       renderEmergencyProviderCard(provider, null);
-      setEmergencyStatus("Demo provider selected from Rajshahi zone list.");
+      setEmergencyStatus("Provider selected from Rajshahi zone list.");
       saveEmergencyAlert();
     });
   });
@@ -520,7 +520,7 @@ function renderEmergencyProviderCard(provider, distanceKm) {
     <div>
       <div class="emergency-provider-topline">
         <span>${escapeHtml(provider.zone)}</span>
-        <strong>${provider.available_24_7 ? "24/7 demo" : "Limited hours"}</strong>
+        <strong>${provider.available_24_7 ? "24/7 listed" : "Limited hours"}</strong>
       </div>
       <h3>${escapeHtml(provider.name)}</h3>
       <p>${escapeHtml(provider.address)}</p>
@@ -678,9 +678,8 @@ async function initHomepagePreview(user) {
 
   try {
     const appointments = await getJson("/appointments");
-    const today = new Date().toISOString().split("T")[0];
     const upcoming = appointments
-      .filter((appointment) => appointment.appointment_date >= today)
+      .filter((appointment) => appointment.is_upcoming === true)
       .sort((a, b) => `${a.appointment_date} ${a.appointment_time}`.localeCompare(`${b.appointment_date} ${b.appointment_time}`))[0];
 
     if (upcoming) {

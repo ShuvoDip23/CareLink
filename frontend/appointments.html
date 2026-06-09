@@ -1,111 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Appointments - CareLink</title>
-    <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Appointments - CareLink</title>
+  <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container">
-            <div class="nav-brand">
-                <span class="logo">🏥</span>
-                <span class="brand-name">CareLink</span>
-            </div>
-            <ul class="nav-menu">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="doctors.html">Find Doctors</a></li>
-                <li><a href="appointments.html" class="active">My Appointments</a></li>
-                  <li><a href="admin_add_doctor.html">Add Doctors</a></li>
-            </ul>
-        </div>
-    </nav>
+  <nav class="site-nav">
+    <div class="container nav-inner">
+      <a href="index.html" class="nav-brand" aria-label="CareLink home">
+        <span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 12h14"/></svg></span>
+        <span class="brand-name">CareLink</span>
+      </a>
+      <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-controls="navMenu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <ul class="nav-menu" id="navMenu">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="doctors.html">Find Doctors</a></li>
+        <li id="navAppointments" style="display:none;"><a href="appointments.html" class="active">Appointments</a></li>
+        <li id="navAdmin" style="display:none;"><a href="admin_add_doctor.html">Admin</a></li>
+        <li id="navLogin"><a href="login.html">Login</a></li>
+        <li id="navRegister" class="nav-cta"><a href="register.html">Register</a></li>
+        <li id="navUser" style="display:none;"></li>
+        <li id="navLogout" class="nav-logout" style="display:none;"><a href="#" onclick="logoutUser(); return false;">Logout</a></li>
+      </ul>
+    </div>
+  </nav>
 
-    <!-- Appointments Section -->
-    <section class="appointments-section">
-        <div class="container">
-            <h1>My Appointments</h1>
-            
-            <div id="loadingSpinner" class="loading">
-                <div class="spinner"></div>
-                <p>Loading your appointments...</p>
-            </div>
-
-            <div id="appointmentsList" class="appointments-list"></div>
-            
-            <div id="noAppointments" class="no-results" style="display: none;">
-                <span style="font-size: 64px;">📅</span>
-                <h2>No Appointments Yet</h2>
-                <p>You haven't booked any appointments. Find a doctor and schedule your first consultation.</p>
-                <a href="doctors.html" class="btn btn-primary">Find a Doctor</a>
-            </div>
-        </div>
+  <main class="page">
+    <section class="page-hero">
+      <div class="container">
+        <span class="eyebrow">Patient dashboard</span>
+        <h1>Your appointments in one place.</h1>
+        <p>Review booked consultations, dates, reasons, and current status from a mobile-friendly patient dashboard.</p>
+      </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>🏥 CareLink</h4>
-                    <p>Your trusted healthcare partner for quality medical services.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Quick Links</h4>
-                    <ul>
-                        <li><a href="doctors.html">Find Doctors</a></li>
-                        <li><a href="appointments.html">My Appointments</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Emergency</h4>
-                    <p>For medical emergencies, call 911 or visit your nearest emergency room.</p>
-                </div>
+    <section class="appointments-section">
+      <div class="container appointments-dashboard">
+        <div class="dashboard-panel">
+          <h2>My appointments</h2>
+          <p id="appointmentsIntro">Loading your appointment history...</p>
+          <div class="dashboard-metrics" aria-label="Appointment summary">
+            <div class="dashboard-metric">
+              <strong id="appointmentTotal">0</strong>
+              <span>Total appointments</span>
             </div>
-            <div class="footer-bottom">
-                <p>&copy; 2024 CareLink. All rights reserved.</p>
+            <div class="dashboard-metric">
+              <strong id="appointmentUpcoming">0</strong>
+              <span>Upcoming</span>
             </div>
+            <div class="dashboard-metric">
+              <strong id="appointmentLatest">--</strong>
+              <span>Latest booking</span>
+            </div>
+          </div>
         </div>
-    </footer>
 
-    <!-- Chat Widget -->
-    <div id="chatWidget" class="chat-widget">
-        <div class="chat-header">
-            <div class="chat-header-content">
-                <span class="chat-icon">🤖</span>
-                <div>
-                    <h3>Health Assistant</h3>
-                    <span class="chat-status">Online</span>
-                </div>
-            </div>
-            <button onclick="closeChatbot()" class="close-chat">×</button>
+        <div id="loadingSpinner" class="loading">
+          <div class="spinner"></div>
+          <p>Loading appointments...</p>
         </div>
-        <div id="chatMessages" class="chat-messages">
-            <div class="bot-message">
-                <div class="message-content">
-                    Hello! I'm your Health Assistant. Click "Start Consultation" to begin.
-                </div>
-            </div>
-        </div>
-        <div class="chat-input-area">
-            <input type="text" id="chatInput" placeholder="Type your message..." disabled>
-            <button onclick="sendMessage()" id="sendBtn" disabled>Send</button>
-        </div>
-        <div class="chat-actions">
-            <button onclick="startConsultation()" id="startBtn" class="btn-start">Start Consultation</button>
-        </div>
-    </div>
 
-    <!-- Floating Chat Button -->
-    <button onclick="toggleChatbot()" class="chat-float-btn" id="chatFloatBtn">
-        <span class="chat-btn-icon">💬</span>
-        <span class="chat-btn-text">Health Assistant</span>
-    </button>
+        <div id="appointmentsList" class="appointments-list"></div>
 
-    <script src="js/main.js"></script>
-    <script src="js/appointments.js"></script>
-    <script src="js/chat.js"></script>
+        <div id="noAppointments" class="no-results" style="display:none;">
+          <span class="empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v4M16 3v4M4 9h16M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/></svg></span>
+          <h2>No appointments yet</h2>
+          <p>Choose a doctor profile and book your first consultation.</p>
+          <a href="doctors.html" class="btn btn-primary">Find a Doctor</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/main.js"></script>
+  <script src="js/appointments.js"></script>
 </body>
 </html>

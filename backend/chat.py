@@ -4,352 +4,47 @@ from auth import login_required
 from datetime import datetime
 import json
 import uuid
+import os
+import urllib.request
+import urllib.error
+import re
 
 chat_bp = Blueprint('chat', __name__)
-
-# =========================
-# Category configuration
-# =========================
-
-CATEGORY_KEYWORDS = {
-    'cardio': [
-        'chest pain', 'chest', 'heart', 'palpitation', 'palpitations',
-        'pressure', 'shortness of breath', 'breathless', 'tightness',
-        'arm pain', 'jaw pain'
-    ],
-    'skin': [
-        'rash', 'itch', 'itching', 'acne', 'pimple', 'eczema', 'psoriasis',
-        'skin', 'redness', 'blister', 'hives', 'allergy', 'spots'
-    ],
-    'gastro': [
-        'stomach', 'abdominal', 'abdomen', 'nausea', 'vomit', 'vomiting',
-        'diarrhea', 'constipation', 'gas', 'bloating', 'indigestion',
-        'acid', 'heartburn', 'food poisoning'
-    ],
-    'respiratory': [
-        'cough', 'cold', 'fever', 'throat', 'wheezing', 'breathing',
-        'sore throat', 'runny nose', 'flu', 'phlegm'
-    ],
-    'neuro': [
-        'headache', 'migraine', 'dizzy', 'dizziness', 'numbness', 'weakness',
-        'seizure', 'confusion', 'fainting', 'tingling'
-    ],
-    'ortho': [
-        'bone', 'joint', 'muscle', 'back pain', 'back', 'knee', 'neck pain',
-        'shoulder pain', 'swelling', 'arthritis', 'sprain', 'injury', 'fall'
-    ],
-    'eye': [
-        'eye', 'vision', 'blurred', 'red eye', 'eye pain', 'watering',
-        'itchy eyes'
-    ],
-    'ent': [
-        'ear', 'hearing', 'nose', 'sinus', 'ear pain', 'ear discharge',
-        'throat pain', 'tonsil'
-    ]
-}
-
-CATEGORY_LABELS = {
-    'cardio': 'Heart / Cardiovascular',
-    'skin': 'Skin',
-    'gastro': 'Digestive / Gastro',
-    'respiratory': 'Respiratory',
-    'neuro': 'Neurological',
-    'ortho': 'Bone / Joint / Muscle',
-    'eye': 'Eye',
-    'ent': 'ENT',
-    'general': 'General'
-}
-
-SPECIALIST_MAP = {
-    'cardio': 'Cardiologist',
-    'skin': 'Dermatologist',
-    'gastro': 'Gastroenterologist',
-    'respiratory': 'General Physician',
-    'neuro': 'Neurologist',
-    'ortho': 'Orthopedic',
-    'eye': 'Ophthalmologist',
-    'ent': 'ENT Specialist',
-    'general': 'General Physician'
-}
-
-QUESTION_FLOWS = {
-    'cardio': [
-        {
-            'key': 'duration',
-            'question': 'How long have you had the chest pain or heart-related symptom?',
-            'options': ['Less than 1 hour', '1-24 hours', '1-3 days', 'More than 3 days']
-        },
-        {
-            'key': 'severity',
-            'question': 'How severe is it?',
-            'options': ['Mild', 'Moderate', 'Severe']
-        },
-        {
-            'key': 'shortness_breath',
-            'question': 'Are you also having shortness of breath? (yes/no)'
-        },
-        {
-            'key': 'radiating_pain',
-            'question': 'Does the pain spread to your arm, jaw, shoulder, or back? (yes/no)'
-        },
-        {
-            'key': 'sweating_nausea',
-            'question': 'Are you also sweating, feeling nauseated, or dizzy? (yes/no)'
-        },
-        {
-            'key': 'past_history',
-            'question': 'Do you have any history of high blood pressure, diabetes, or heart disease? (or type none)'
-        },
-        {
-            'key': 'bp_reading',
-            'question': 'Do you know your current blood pressure reading? Type like 120/80 or type no'
-        }
-    ],
-    'skin': [
-        {
-            'key': 'duration',
-            'question': 'How long have you had the skin problem?',
-            'options': ['Today', '1-3 days', '3-7 days', 'More than a week']
-        },
-        {
-            'key': 'severity',
-            'question': 'How severe is it?',
-            'options': ['Mild', 'Moderate', 'Severe']
-        },
-        {
-            'key': 'itching',
-            'question': 'Is it itchy? (yes/no)'
-        },
-        {
-            'key': 'painful',
-            'question': 'Is it painful or burning? (yes/no)'
-        },
-        {
-            'key': 'spreading',
-            'question': 'Is the rash or skin problem spreading? (yes/no)'
-        },
-        {
-            'key': 'fever',
-            'question': 'Do you also have fever? (yes/no)'
-        },
-        {
-            'key': 'trigger',
-            'question': 'Did it start after using a new soap, cream, food, or medicine? (yes/no)'
-        },
-        {
-            'key': 'past_history',
-            'question': 'Do you have any history of allergies or skin disease? (or type none)'
-        }
-    ],
-    'gastro': [
-        {
-            'key': 'duration',
-            'question': 'How long have you had the stomach or digestive problem?',
-            'options': ['Less than 24 hours', '1-3 days', '3-7 days', 'More than a week']
-        },
-        {
-            'key': 'severity',
-            'question': 'How severe is it?',
-            'options': ['Mild', 'Moderate', 'Severe']
-        },
-        {
-            'key': 'vomiting',
-            'question': 'Are you vomiting? (yes/no)'
-        },
-        {
-            'key': 'diarrhea',
-            'question': 'Do you have diarrhea? (yes/no)'
-        },
-        {
-            'key': 'pain_location',
-            'question': 'Where is the pain located? (upper abdomen / lower abdomen / all over / no pain)'
-        },
-        {
-            'key': 'food_related',
-            'question': 'Does it get worse after eating? (yes/no)'
-        },
-        {
-            'key': 'blood',
-            'question': 'Have you noticed blood in vomit or stool? (yes/no)'
-        },
-        {
-            'key': 'past_history',
-            'question': 'Do you have any past history like ulcer, gastritis, or digestive disease? (or type none)'
-        }
-    ],
-    'respiratory': [
-        {
-            'key': 'duration',
-            'question': 'How long have you had the breathing, cough, or throat problem?',
-            'options': ['Today', '1-3 days', '3-7 days', 'More than a week']
-        },
-        {
-            'key': 'severity',
-            'question': 'How severe is it?',
-            'options': ['Mild', 'Moderate', 'Severe']
-        },
-        {
-            'key': 'fever',
-            'question': 'Do you have fever? (yes/no)'
-        },
-        {
-            'key': 'phlegm',
-            'question': 'Are you coughing up phlegm or mucus? (yes/no)'
-        },
-        {
-            'key': 'breathing_difficulty',
-            'question': 'Are you having difficulty breathing even while resting? (yes/no)'
-        },
-        {
-            'key': 'chest_tightness',
-            'question': 'Do you feel chest tightness or wheezing? (yes/no)'
-        },
-        {
-            'key': 'past_history',
-            'question': 'Do you have asthma, allergy, or any lung disease? (or type none)'
-        }
-    ],
-    'neuro': [
-        {
-            'key': 'duration',
-            'question': 'How long have you had this headache, dizziness, or nerve-related symptom?',
-            'options': ['Less than 1 hour', '1-24 hours', '1-3 days', 'More than 3 days']
-        },
-        {
-            'key': 'severity',
-            'question': 'How severe is it?',
-            'options': ['Mild', 'Moderate', 'Severe']
-        },
-        {
-            'key': 'sudden_onset',
-            'question': 'Did it start suddenly? (yes/no)'
-        },
-        {
-            'key': 'numbness',
-            'question': 'Do you have numbness, weakness, or trouble speaking? (yes/no)'
-        },
-        {
-            'key': 'vision_change',
-            'question': 'Do you have blurred vision or confusion? (yes/no)'
-        },
-        {
-            'key': 'past_history',
-            'question': 'Do you have migraine, stroke history, or neurological disease? (or type none)'
-        }
-    ],
-    'ortho': [
-        {
-            'key': 'duration',
-            'question': 'How long have you had the bone, joint, muscle, or back problem?',
-            'options': ['Today', '1-3 days', '3-7 days', 'More than a week']
-        },
-        {
-            'key': 'severity',
-            'question': 'How severe is it?',
-            'options': ['Mild', 'Moderate', 'Severe']
-        },
-        {
-            'key': 'injury',
-            'question': 'Did it start after an injury, fall, or lifting something heavy? (yes/no)'
-        },
-        {
-            'key': 'swelling',
-            'question': 'Is there swelling? (yes/no)'
-        },
-        {
-            'key': 'movement_problem',
-            'question': 'Do you have trouble moving the affected area? (yes/no)'
-        },
-        {
-            'key': 'past_history',
-            'question': 'Do you have arthritis or any bone/joint disease? (or type none)'
-        }
-    ],
-    'eye': [
-        {
-            'key': 'duration',
-            'question': 'How long have you had the eye problem?',
-            'options': ['Today', '1-3 days', '3-7 days', 'More than a week']
-        },
-        {
-            'key': 'severity',
-            'question': 'How severe is it?',
-            'options': ['Mild', 'Moderate', 'Severe']
-        },
-        {
-            'key': 'vision_loss',
-            'question': 'Do you have blurred vision or sudden vision loss? (yes/no)'
-        },
-        {
-            'key': 'redness',
-            'question': 'Is the eye red? (yes/no)'
-        },
-        {
-            'key': 'discharge',
-            'question': 'Is there discharge or watering? (yes/no)'
-        },
-        {
-            'key': 'painful',
-            'question': 'Is it painful? (yes/no)'
-        }
-    ],
-    'ent': [
-        {
-            'key': 'duration',
-            'question': 'How long have you had the ear, nose, or throat problem?',
-            'options': ['Today', '1-3 days', '3-7 days', 'More than a week']
-        },
-        {
-            'key': 'severity',
-            'question': 'How severe is it?',
-            'options': ['Mild', 'Moderate', 'Severe']
-        },
-        {
-            'key': 'fever',
-            'question': 'Do you have fever? (yes/no)'
-        },
-        {
-            'key': 'discharge',
-            'question': 'Is there any ear discharge, nasal discharge, or throat pus? (yes/no)'
-        },
-        {
-            'key': 'hearing_problem',
-            'question': 'Do you have reduced hearing or ear blockage? (yes/no)'
-        },
-        {
-            'key': 'past_history',
-            'question': 'Do you have sinus problems, tonsil issues, or ear infections before? (or type none)'
-        }
-    ],
-    'general': [
-        {
-            'key': 'duration',
-            'question': 'How long have you been experiencing these symptoms?',
-            'options': ['Today', '1-3 days', '3-7 days', 'More than a week']
-        },
-        {
-            'key': 'severity',
-            'question': 'How severe are the symptoms?',
-            'options': ['Mild', 'Moderate', 'Severe']
-        },
-        {
-            'key': 'past_history',
-            'question': 'Do you have any past medical history? (or type none)'
-        }
-    ]
-}
+print("=== UPDATED LLM-DRIVEN CHAT.PY IS RUNNING ===")
 
 
 # =========================
-# Helper functions
+# Constants / configuration
+# =========================
+
+MAX_DYNAMIC_QUESTIONS = 5
+
+EMERGENCY_PATTERNS = [
+    r"\b(can'?t breathe|cannot breathe|severe breathing|breathing difficulty)\b",
+    r"\b(chest pain.*left arm|left arm.*chest pain)\b",
+    r"\b(chest pain.*jaw|jaw.*chest pain)\b",
+    r"\b(fainted|passed out|unconscious)\b",
+    r"\b(stroke|slurred speech|one side weak|one-sided weakness)\b",
+    r"\b(seizure)\b",
+    r"\b(coughing blood|vomiting blood|blood in stool)\b",
+    r"\b(sudden vision loss)\b",
+    r"\b(severe allergic reaction|swollen tongue|throat closing)\b",
+]
+
+GENERIC_FALLBACK_QUESTIONS = [
+    "How long have you had these symptoms?",
+    "How severe are the symptoms: mild, moderate, or severe?",
+    "Do you have any fever, shortness of breath, vomiting, or severe weakness?",
+    "Do the symptoms get worse with movement, eating, or physical activity?"
+]
+
+
+# =========================
+# Helpers
 # =========================
 
 def normalize_text(text):
-    return text.strip().lower() if text else ''
-
-
-def is_yes(text):
-    return normalize_text(text) in ['yes', 'y', 'yeah', 'yep']
+    return text.strip().lower() if text else ""
 
 
 def parse_json_data(raw_data):
@@ -361,14 +56,23 @@ def parse_json_data(raw_data):
         return {}
 
 
-def save_bot_message(session_pk, message, message_type='text', buttons=None):
+def to_json_string(data):
+    try:
+        return json.dumps(data)
+    except Exception:
+        return "{}"
+
+
+def save_bot_message(session_pk, message, message_type="text", buttons=None, extra_payload=None):
     metadata = {}
     if buttons:
-        metadata['buttons'] = buttons
+        metadata["buttons"] = buttons
+    if extra_payload:
+        metadata["extra_payload"] = extra_payload
 
     bot_message = ChatMessage(
         session_id=session_pk,
-        sender='bot',
+        sender="bot",
         message=message,
         message_type=message_type,
         message_metadata=json.dumps(metadata) if metadata else None
@@ -376,62 +80,146 @@ def save_bot_message(session_pk, message, message_type='text', buttons=None):
     db.session.add(bot_message)
 
 
-def detect_category(symptoms):
-    symptoms = normalize_text(symptoms)
+def extract_json_from_llm_content(content):
+    if not content:
+        return None
 
-    best_category = 'general'
-    best_score = 0
-
-    for category, keywords in CATEGORY_KEYWORDS.items():
-        score = 0
-        for keyword in keywords:
-            if keyword in symptoms:
-                score += 1
-        if score > best_score:
-            best_score = score
-            best_category = category
-
-    return best_category
-
-
-def get_question_flow(category):
-    return QUESTION_FLOWS.get(category, QUESTION_FLOWS['general'])
-
-
-def parse_bp(bp_text):
-    bp_text = normalize_text(bp_text)
-    if '/' not in bp_text:
-        return None, None
+    content = content.strip()
 
     try:
-        systolic_str, diastolic_str = bp_text.split('/')
-        systolic = int(systolic_str.strip())
-        diastolic = int(diastolic_str.strip())
-        return systolic, diastolic
+        return json.loads(content)
     except Exception:
-        return None, None
+        pass
 
+    start = content.find("{")
+    end = content.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        try:
+            return json.loads(content[start:end + 1])
+        except Exception:
+            return None
 
-def get_current_question(data):
-    category = data.get('category', 'general')
-    question_index = data.get('question_index', 0)
-    questions = get_question_flow(category)
-
-    if question_index < len(questions):
-        return questions[question_index]
     return None
 
 
-def get_intro_message(category):
-    label = CATEGORY_LABELS.get(category, 'General')
-    return f"Thank you. Your symptoms seem related to the {label} category. I'll ask a few specific questions."
+def call_openrouter(messages, temperature=0.2, max_tokens=700):
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        return None
+
+    payload = {
+        "model": "openrouter/auto",
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens
+    }
+
+    try:
+        req = urllib.request.Request(
+            "https://openrouter.ai/api/v1/chat/completions",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "http://localhost:5500",
+                "X-Title": "CareLink Medical Assistant"
+            },
+            method="POST"
+        )
+
+        with urllib.request.urlopen(req, timeout=40) as response:
+            raw_response = response.read().decode("utf-8")
+            result = json.loads(raw_response)
+
+        choices = result.get("choices", [])
+        if not choices:
+            return None
+
+        return choices[0].get("message", {}).get("content")
+
+    except urllib.error.HTTPError as e:
+        try:
+            print("OPENROUTER HTTP ERROR:", e.read().decode("utf-8"))
+        except Exception:
+            print("OPENROUTER HTTP ERROR: could not read body")
+        return None
+    except Exception as e:
+        print("call_openrouter failed:", e)
+        return None
+
+
+def emergency_rule_check(text, collected_data=None):
+    text = normalize_text(text)
+    collected_data = collected_data or {}
+
+    for pattern in EMERGENCY_PATTERNS:
+        if re.search(pattern, text):
+            return {
+                "is_emergency": True,
+                "reason": "Your message includes warning signs that may need urgent medical attention.",
+                "matched_by": "rule"
+            }
+
+    answers_text = ""
+    answers = collected_data.get("answers", {})
+    if isinstance(answers, dict):
+        answers_text = " ".join(str(v) for v in answers.values())
+
+    all_text = " ".join([
+        normalize_text(text),
+        normalize_text(collected_data.get("symptoms", "")),
+        normalize_text(answers_text)
+    ])
+
+    red_flag_terms = [
+        "shortness of breath",
+        "left arm",
+        "jaw",
+        "fainting",
+        "slurred speech",
+        "blood in stool",
+        "vomiting blood",
+        "sudden vision loss",
+        "severe weakness",
+        "sweating",
+        "crushing chest pain"
+    ]
+    match_count = sum(1 for term in red_flag_terms if term in all_text)
+
+    if match_count >= 2:
+        return {
+            "is_emergency": True,
+            "reason": "Multiple serious warning signs were detected.",
+            "matched_by": "rule"
+        }
+
+    return {
+        "is_emergency": False,
+        "reason": "",
+        "matched_by": None
+    }
+
+
+def requires_deeper_questioning(symptoms_text):
+    text = normalize_text(symptoms_text)
+
+    ambiguous_patterns = [
+        "chest pain",
+        "abdominal pain",
+        "stomach pain",
+        "headache",
+        "dizziness",
+        "shortness of breath",
+        "breathing problem",
+        "back pain",
+        "fainting",
+        "weakness"
+    ]
+
+    return any(item in text for item in ambiguous_patterns)
 
 
 def check_previous_sessions(user_id, current_symptoms):
-    """
-    Keep this helper so later history-aware warnings can be added.
-    For now it returns light context only and does not interrupt the flow.
-    """
     user = User.query.get(user_id)
     if not user:
         return None
@@ -452,22 +240,15 @@ def check_previous_sessions(user_id, current_symptoms):
 
         try:
             past_data = json.loads(sess.collected_data)
-            past_symptoms = normalize_text(past_data.get('symptoms', ''))
+            past_symptoms = normalize_text(past_data.get("symptoms", ""))
 
-            if 'chest' in current_lower and 'chest' in past_symptoms:
+            common_words = set(current_lower.split()) & set(past_symptoms.split())
+            if len(common_words) >= 2:
                 return {
-                    'has_history': True,
-                    'past_symptoms': past_data.get('symptoms'),
-                    'past_specialty': sess.recommended_specialty,
-                    'session_date': sess.started_at.strftime('%Y-%m-%d')
-                }
-
-            if 'rash' in current_lower and 'rash' in past_symptoms:
-                return {
-                    'has_history': True,
-                    'past_symptoms': past_data.get('symptoms'),
-                    'past_specialty': sess.recommended_specialty,
-                    'session_date': sess.started_at.strftime('%Y-%m-%d')
+                    "has_history": True,
+                    "past_symptoms": past_data.get("symptoms"),
+                    "past_specialty": sess.recommended_specialty,
+                    "session_date": sess.started_at.strftime("%Y-%m-%d")
                 }
         except Exception:
             pass
@@ -475,315 +256,430 @@ def check_previous_sessions(user_id, current_symptoms):
     return None
 
 
-def analyze_and_build_result(collected_data):
-    category = collected_data.get('category', 'general')
-    severity = normalize_text(collected_data.get('severity', ''))
-    past_history = normalize_text(collected_data.get('past_history', ''))
-    specialist = SPECIALIST_MAP.get(category, 'General Physician')
+# =========================
+# LLM stage 1: normalization
+# =========================
 
-    risk_level = 'low'
-    advice = "Monitor your symptoms and consult a healthcare professional if symptoms persist or worsen."
-    is_emergency = False
+def normalize_input_with_llm(user_text):
+    fallback = {
+        "raw_input": user_text,
+        "normalized_text": user_text.strip(),
+        "corrected_symptoms": [],
+        "duration": "",
+        "severity": "",
+        "body_location": ""
+    }
 
-    if category == 'cardio':
-        score = 0
+    system_prompt = """
+You are a medical symptom input normalizer for a healthcare chatbot.
 
-        if is_yes(collected_data.get('shortness_breath', '')):
-            score += 2
-        if is_yes(collected_data.get('radiating_pain', '')):
-            score += 3
-        if is_yes(collected_data.get('sweating_nausea', '')):
-            score += 2
-        if 'severe' in severity:
-            score += 2
-        if any(word in past_history for word in ['blood pressure', 'hypertension', 'diabetes', 'heart']):
-            score += 1
+Tasks:
+1. Correct likely typos
+2. Rewrite the user's message into simple clean medical English
+3. Extract short symptom phrases
+4. Extract duration if mentioned
+5. Extract severity if mentioned
+6. Extract body location if mentioned
 
-        systolic, diastolic = parse_bp(collected_data.get('bp_reading', ''))
-        if systolic and diastolic:
-            if systolic >= 180 or diastolic >= 120:
-                score += 3
+Rules:
+- Do NOT diagnose
+- Do NOT invent new symptoms
+- Preserve the user's meaning closely
+- Return JSON only
+- Use exactly this schema:
 
-        if score >= 6:
-            is_emergency = True
-            risk_level = 'emergency'
-            specialist = 'Emergency Medicine'
-            advice = "Possible serious cardiac warning signs. Seek emergency medical care immediately."
-        elif score >= 3:
-            risk_level = 'high'
-            advice = "Your symptoms may need urgent heart evaluation. Avoid exertion and consult a doctor as soon as possible."
-        elif score >= 1:
-            risk_level = 'medium'
-            advice = "Monitor symptoms carefully and arrange a cardiology consultation soon."
-        else:
-            risk_level = 'low'
-            advice = "Avoid stress, heavy activity, and monitor symptoms. Consult a cardiologist if symptoms continue."
+{
+  "raw_input": "...",
+  "normalized_text": "...",
+  "corrected_symptoms": ["..."],
+  "duration": "",
+  "severity": "",
+  "body_location": ""
+}
+""".strip()
 
-    elif category == 'skin':
-        score = 0
+    content = call_openrouter(
+        [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Patient message: {user_text}"}
+        ],
+        temperature=0.1,
+        max_tokens=250
+    )
 
-        if is_yes(collected_data.get('spreading', '')):
-            score += 2
-        if is_yes(collected_data.get('fever', '')):
-            score += 2
-        if is_yes(collected_data.get('painful', '')):
-            score += 1
-        if 'severe' in severity:
-            score += 2
-        if is_yes(collected_data.get('trigger', '')):
-            score += 1
+    if not content:
+        return fallback
 
-        if score >= 5:
-            risk_level = 'high'
-            advice = "This skin condition may need urgent medical review, especially if it is spreading or associated with fever."
-        elif score >= 3:
-            risk_level = 'medium'
-            advice = "Keep the area clean, avoid scratching, and consult a dermatologist."
-        else:
-            risk_level = 'low'
-            advice = "Keep the skin clean, avoid irritants, and monitor for spreading or fever."
-
-    elif category == 'gastro':
-        score = 0
-
-        if is_yes(collected_data.get('vomiting', '')):
-            score += 1
-        if is_yes(collected_data.get('diarrhea', '')):
-            score += 1
-        if is_yes(collected_data.get('blood', '')):
-            score += 4
-        if 'severe' in severity:
-            score += 2
-        if normalize_text(collected_data.get('pain_location', '')) in ['upper abdomen', 'lower abdomen']:
-            score += 1
-
-        if is_yes(collected_data.get('blood', '')):
-            is_emergency = True
-            risk_level = 'emergency'
-            specialist = 'Emergency Medicine'
-            advice = "Blood in vomit or stool can be serious. Please seek immediate medical attention."
-        elif score >= 4:
-            risk_level = 'high'
-            advice = "Your digestive symptoms may need urgent evaluation. Stay hydrated and seek medical care soon."
-        elif score >= 2:
-            risk_level = 'medium'
-            advice = "Drink fluids, avoid spicy/oily foods, and arrange a consultation if symptoms continue."
-        else:
-            risk_level = 'low'
-            advice = "Stay hydrated and eat light foods. Seek care if symptoms worsen."
-
-    elif category == 'respiratory':
-        score = 0
-
-        if is_yes(collected_data.get('fever', '')):
-            score += 1
-        if is_yes(collected_data.get('phlegm', '')):
-            score += 1
-        if is_yes(collected_data.get('breathing_difficulty', '')):
-            score += 3
-        if is_yes(collected_data.get('chest_tightness', '')):
-            score += 2
-        if 'severe' in severity:
-            score += 2
-
-        if is_yes(collected_data.get('breathing_difficulty', '')) and 'severe' in severity:
-            is_emergency = True
-            risk_level = 'emergency'
-            specialist = 'Emergency Medicine'
-            advice = "Severe breathing difficulty can be dangerous. Seek emergency medical care immediately."
-        elif score >= 4:
-            risk_level = 'high'
-            advice = "Your symptoms need medical review soon, especially because of breathing involvement."
-        elif score >= 2:
-            risk_level = 'medium'
-            advice = "Rest, drink warm fluids, and consult a doctor if symptoms continue."
-        else:
-            risk_level = 'low'
-            advice = "Rest, stay hydrated, and monitor symptoms."
-
-    elif category == 'neuro':
-        score = 0
-
-        if is_yes(collected_data.get('sudden_onset', '')):
-            score += 2
-        if is_yes(collected_data.get('numbness', '')):
-            score += 3
-        if is_yes(collected_data.get('vision_change', '')):
-            score += 2
-        if 'severe' in severity:
-            score += 2
-
-        if is_yes(collected_data.get('numbness', '')) and is_yes(collected_data.get('vision_change', '')):
-            is_emergency = True
-            risk_level = 'emergency'
-            specialist = 'Emergency Medicine'
-            advice = "These symptoms may indicate a serious neurological condition. Please get immediate medical care."
-        elif score >= 4:
-            risk_level = 'high'
-            advice = "Your neurological symptoms need urgent assessment."
-        elif score >= 2:
-            risk_level = 'medium'
-            advice = "Rest and arrange a neurology consultation soon."
-        else:
-            risk_level = 'low'
-            advice = "Monitor symptoms and seek care if they worsen or happen again."
-
-    elif category == 'ortho':
-        score = 0
-
-        if is_yes(collected_data.get('injury', '')):
-            score += 2
-        if is_yes(collected_data.get('swelling', '')):
-            score += 1
-        if is_yes(collected_data.get('movement_problem', '')):
-            score += 2
-        if 'severe' in severity:
-            score += 2
-
-        if score >= 5:
-            risk_level = 'high'
-            advice = "You may need urgent orthopedic evaluation, especially if movement is restricted."
-        elif score >= 3:
-            risk_level = 'medium'
-            advice = "Rest the area, avoid strain, and consult an orthopedic specialist."
-        else:
-            risk_level = 'low'
-            advice = "Rest, avoid heavy activity, and use cold compress if swelling is present."
-
-    elif category == 'eye':
-        score = 0
-
-        if is_yes(collected_data.get('vision_loss', '')):
-            score += 4
-        if is_yes(collected_data.get('painful', '')):
-            score += 2
-        if is_yes(collected_data.get('redness', '')):
-            score += 1
-        if is_yes(collected_data.get('discharge', '')):
-            score += 1
-
-        if is_yes(collected_data.get('vision_loss', '')):
-            is_emergency = True
-            risk_level = 'emergency'
-            specialist = 'Emergency Medicine'
-            advice = "Sudden change in vision can be serious. Seek immediate eye care."
-        elif score >= 3:
-            risk_level = 'high'
-            advice = "Your eye symptoms need prompt ophthalmology evaluation."
-        else:
-            risk_level = 'medium'
-            advice = "Avoid rubbing the eye and arrange an eye consultation."
-
-    elif category == 'ent':
-        score = 0
-
-        if is_yes(collected_data.get('fever', '')):
-            score += 1
-        if is_yes(collected_data.get('discharge', '')):
-            score += 2
-        if is_yes(collected_data.get('hearing_problem', '')):
-            score += 2
-        if 'severe' in severity:
-            score += 2
-
-        if score >= 4:
-            risk_level = 'high'
-            advice = "Your symptoms should be checked by an ENT specialist soon."
-        elif score >= 2:
-            risk_level = 'medium'
-            advice = "Arrange an ENT consultation and avoid self-medicating without advice."
-        else:
-            risk_level = 'low'
-            advice = "Monitor symptoms and seek care if they worsen."
-
-    else:
-        if 'severe' in severity:
-            risk_level = 'high'
-            advice = "Your symptoms appear significant. Please see a doctor soon."
-        elif 'moderate' in severity:
-            risk_level = 'medium'
-            advice = "Please schedule a check-up if symptoms persist."
-        else:
-            risk_level = 'low'
-            advice = "Rest, stay hydrated, and monitor symptoms."
+    parsed = extract_json_from_llm_content(content)
+    if not parsed:
+        return fallback
 
     return {
-        'category': category,
-        'risk_level': risk_level,
-        'specialist': specialist,
-        'advice': advice,
-        'is_emergency': is_emergency
+        "raw_input": parsed.get("raw_input", user_text),
+        "normalized_text": parsed.get("normalized_text", user_text.strip()),
+        "corrected_symptoms": parsed.get("corrected_symptoms", []),
+        "duration": parsed.get("duration", ""),
+        "severity": parsed.get("severity", ""),
+        "body_location": parsed.get("body_location", "")
     }
 
 
-def build_final_message(collected_data, result):
-    category_label = CATEGORY_LABELS.get(result['category'], 'General')
-    symptoms = collected_data.get('symptoms', '')
-    duration = collected_data.get('duration', '')
-    severity = collected_data.get('severity', '')
+# =========================
+# LLM stage 2: reasoning
+# =========================
 
-    if result['is_emergency']:
-        return f"""🚨 **EMERGENCY ALERT** 🚨
+def reason_case_with_llm(collected_data):
+    symptoms = collected_data.get("symptoms", "")
+    answers = collected_data.get("answers", {})
+    asked_questions = collected_data.get("asked_questions", [])
+    question_count = collected_data.get("question_count", 0)
 
-Your answers suggest a potentially serious condition.
+    fallback = {
+        "possible_conditions": [
+            {"name": "General medical condition", "likelihood": "medium"}
+        ],
+        "possible_specialties": ["General Physician"],
+        "red_flags": [],
+        "follow_up_questions": [],
+        "likely_specialty": "General Physician",
+        "urgency": "low",
+        "assessment_complete": question_count >= 3,
+        "summary": "The symptoms need general medical evaluation.",
+        "reasoning_note": "LLM unavailable, using fallback reasoning."
+    }
 
-**Assessment Summary:**
-- Symptom Category: {category_label}
-- Risk Level: {result['risk_level'].upper()}
-- Recommended Action: Immediate emergency care
+    system_prompt = """
+You are a cautious healthcare triage reasoning assistant for an academic symptom-checker.
 
-**Advice:**
-{result['advice']}
+You are NOT giving a final diagnosis.
+You must:
+1. Consider multiple possible causes, not just one
+2. Ask only the most useful discriminating follow-up questions
+3. Recommend a likely specialist
+4. Detect red flags
+5. Decide whether enough information is available
 
-**Important:**
-- Go to the nearest emergency room immediately
-- Do not delay if symptoms are severe or worsening
-- This chatbot does not provide a final diagnosis
+Rules:
+- Be conservative and safe
+- Do not claim certainty
+- Do not invent facts not provided by the patient
+- Keep follow-up questions short and high-value
+- Ask at most 3 follow-up questions at a time
+- If enough information already exists, set assessment_complete = true
+- Urgency must be one of: low, medium, high, emergency
+- likely_specialty should be a doctor label such as:
+  Cardiologist, Gastroenterologist, Neurologist, Dermatologist,
+  Pulmonologist, Orthopedic, ENT Specialist, Ophthalmologist,
+  General Physician, Emergency Medicine
+
+Important behavior:
+- For ambiguous symptoms such as chest pain, abdominal pain, headache, dizziness, fainting, weakness, or breathing difficulty, do not complete the assessment too early.
+- Usually ask at least 3 to 4 discriminating follow-up questions unless emergency signs are already present.
+- A single descriptive answer like "sharp pain" is usually not enough to complete the assessment for chest pain.
+- For chest pain, prioritize questions about radiation, shortness of breath, sweating, nausea, food relation, exertion, and pain character before completing the assessment.
+- Prefer questions that help distinguish cardiac, gastric, respiratory, musculoskeletal, and anxiety-related causes when chest pain is present.
+
+Return JSON only with this exact schema:
+
+{
+  "possible_conditions": [
+    {"name": "...", "likelihood": "low|medium|high"}
+  ],
+  "possible_specialties": ["..."],
+  "red_flags": ["..."],
+  "follow_up_questions": ["..."],
+  "likely_specialty": "...",
+  "urgency": "low|medium|high|emergency",
+  "assessment_complete": true,
+  "summary": "...",
+  "reasoning_note": "..."
+}
 """.strip()
 
-    if result['risk_level'] == 'high':
-        urgency_message = "⚠️ Your symptoms appear concerning and should be checked soon."
-    elif result['risk_level'] == 'medium':
-        urgency_message = "Your symptoms should be evaluated by a doctor."
-    else:
-        urgency_message = "Your symptoms appear manageable for now, but monitor them carefully."
+    user_payload = {
+        "symptoms": symptoms,
+        "answers": answers,
+        "asked_questions": asked_questions,
+        "question_count": question_count
+    }
 
-    return f"""⚠️ **Disclaimer**: This is not a medical diagnosis. Please consult a qualified healthcare professional for proper diagnosis and treatment.
+    content = call_openrouter(
+        [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": json.dumps(user_payload)}
+        ],
+        temperature=0.2,
+        max_tokens=700
+    )
 
-**Health Assessment Complete**
+    if not content:
+        return fallback
 
-{urgency_message}
+    parsed = extract_json_from_llm_content(content)
+    if not parsed:
+        return fallback
 
-**Your Summary:**
-- Symptom Category: {category_label}
-- Main Symptoms: {symptoms}
-- Duration: {duration}
-- Severity: {severity}
-- Risk Level: {result['risk_level'].capitalize()}
+    possible_conditions = parsed.get("possible_conditions", [])
+    possible_specialties = parsed.get("possible_specialties", [])
+    red_flags = parsed.get("red_flags", [])
+    follow_up_questions = parsed.get("follow_up_questions", [])
+    likely_specialty = parsed.get("likely_specialty", "General Physician")
+    urgency = parsed.get("urgency", "low")
+    assessment_complete = bool(parsed.get("assessment_complete", False))
+    summary = parsed.get("summary", "The symptoms need medical review.")
+    reasoning_note = parsed.get("reasoning_note", "")
 
-**Recommendation:**
-- Specialist: {result['specialist']}
-- Advice: {result['advice']}
+    if not isinstance(possible_conditions, list):
+        possible_conditions = fallback["possible_conditions"]
+    if not isinstance(possible_specialties, list):
+        possible_specialties = fallback["possible_specialties"]
+    if not isinstance(red_flags, list):
+        red_flags = []
+    if not isinstance(follow_up_questions, list):
+        follow_up_questions = []
+    if urgency not in ["low", "medium", "high", "emergency"]:
+        urgency = "low"
+    if not isinstance(likely_specialty, str) or not likely_specialty.strip():
+        likely_specialty = "General Physician"
 
-**Next Steps:**
-- Browse the doctor directory to find a {result['specialist']}
-- Book an appointment if symptoms continue or worsen
-- Seek urgent care immediately if red-flag symptoms appear
-""".strip()
+    if question_count >= MAX_DYNAMIC_QUESTIONS:
+        assessment_complete = True
+        follow_up_questions = []
 
+    return {
+        "possible_conditions": possible_conditions[:4],
+        "possible_specialties": possible_specialties[:4],
+        "red_flags": red_flags[:5],
+        "follow_up_questions": follow_up_questions[:3],
+        "likely_specialty": likely_specialty.strip(),
+        "urgency": urgency,
+        "assessment_complete": assessment_complete,
+        "summary": summary,
+        "reasoning_note": reasoning_note
+    }
+
+
+# =========================
+# Message builders
+# =========================
 
 def get_buttons_for_result(result):
-    if result['is_emergency']:
+    specialist = result.get("likely_specialty", "General Physician")
+
+    if result.get("urgency") == "emergency":
         return [
-            {'text': 'Find Emergency Room', 'action': 'emergency_rooms'},
-            {'text': 'Start New Assessment', 'action': 'new_assessment'}
+            {"text": "Find Emergency Room", "action": "emergency_rooms"},
+            {"text": "Start New Assessment", "action": "new_assessment"}
         ]
 
     return [
-        {'text': f'Browse {result["specialist"]}s', 'action': 'browse_doctors', 'specialty': result['specialist']},
-        {'text': 'Book Appointment', 'action': 'book_appointment', 'specialty': result['specialist']},
-        {'text': 'Start New Assessment', 'action': 'new_assessment'}
+        {"text": f"Browse {specialist}s", "action": "browse_doctors", "specialty": specialist},
+        {"text": "Book Appointment", "action": "book_appointment", "specialty": specialist},
+        {"text": "Start New Assessment", "action": "new_assessment"}
     ]
+
+
+def build_emergency_message(emergency_reason):
+    return f"""🚨 **EMERGENCY ALERT** 🚨
+
+Your symptoms may need **immediate medical attention**.
+
+**Why this is urgent:**
+- {emergency_reason}
+
+**What to do now:**
+- Go to the nearest emergency room immediately
+- Do not delay if symptoms are severe or worsening
+- If available, seek local emergency help right away
+
+**Important:**
+This chatbot does **not** provide a final medical diagnosis.
+""".strip()
+
+
+def build_question_message(reasoning):
+    lines = [
+        "I’m considering a few possible causes and need a little more information before suggesting the most appropriate specialist.",
+        "",
+        "**Possible concerns being considered:**"
+    ]
+
+    conditions = reasoning.get("possible_conditions", [])
+    if conditions:
+        for item in conditions:
+            name = item.get("name", "Possible condition")
+            likelihood = item.get("likelihood", "medium")
+            lines.append(f"- {name} ({likelihood} likelihood)")
+    else:
+        lines.append("- General medical evaluation needed")
+
+    red_flags = reasoning.get("red_flags", [])
+    if red_flags:
+        lines.append("")
+        lines.append("**Important warning signs I am checking for:**")
+        for flag in red_flags[:3]:
+            lines.append(f"- {flag}")
+
+    follow_up = reasoning.get("follow_up_questions", [])
+    if follow_up:
+        lines.append("")
+        lines.append(f"**Next question:** {follow_up[0]}")
+
+    return "\n".join(lines).strip()
+
+
+def build_final_message(collected_data, reasoning):
+    symptoms = collected_data.get("symptoms", "")
+    specialist = reasoning.get("likely_specialty", "General Physician")
+    urgency = reasoning.get("urgency", "low")
+    summary = reasoning.get("summary", "The symptoms need medical evaluation.")
+    red_flags = reasoning.get("red_flags", [])
+    possible_conditions = reasoning.get("possible_conditions", [])
+
+    if urgency == "emergency":
+        reason = red_flags[0] if red_flags else "Serious warning signs may be present."
+        return build_emergency_message(reason)
+
+    urgency_text = {
+        "low": "Your symptoms appear lower risk right now, but they still deserve proper attention if they continue.",
+        "medium": "Your symptoms should be evaluated by a doctor.",
+        "high": "Your symptoms appear concerning and should be checked soon."
+    }.get(urgency, "Your symptoms should be evaluated by a doctor.")
+
+    lines = [
+        "⚠️ **Disclaimer**: This is not a medical diagnosis. Please consult a qualified healthcare professional for proper diagnosis and treatment.",
+        "",
+        "**Health Assessment Summary**",
+        "",
+        urgency_text,
+        "",
+        "**What you reported:**",
+        f"- Symptoms: {symptoms or 'Not provided clearly'}",
+        "",
+        "**Possible causes being considered:**"
+    ]
+
+    if possible_conditions:
+        for item in possible_conditions:
+            name = item.get("name", "Possible condition")
+            likelihood = item.get("likelihood", "medium")
+            lines.append(f"- {name} ({likelihood} likelihood)")
+    else:
+        lines.append("- General medical condition")
+
+    lines.extend([
+        "",
+        "**Recommended specialist:**",
+        f"- {specialist}",
+        "",
+        "**Urgency level:**",
+        f"- {urgency.capitalize()}",
+        "",
+        "**Reasoning summary:**",
+        f"- {summary}"
+    ])
+
+    if red_flags:
+        lines.append("")
+        lines.append("**Warning signs to watch for:**")
+        for flag in red_flags[:4]:
+            lines.append(f"- {flag}")
+
+    lines.extend([
+        "",
+        "**Next steps:**",
+        f"- Consider consulting a {specialist}",
+        "- Book an appointment if symptoms continue or worsen",
+        "- Seek urgent care immediately if serious warning signs appear"
+    ])
+
+    return "\n".join(lines).strip()
+
+
+# =========================
+# Dynamic question handling
+# =========================
+
+def initialize_case_state(collected_data, llm_normalized):
+    normalized_text = llm_normalized.get("normalized_text", "").strip()
+    collected_data["raw_symptoms"] = llm_normalized.get("raw_input", normalized_text)
+    collected_data["symptoms"] = normalized_text
+    collected_data["llm_corrected_symptoms"] = llm_normalized.get("corrected_symptoms", [])
+    collected_data["duration"] = llm_normalized.get("duration", "")
+    collected_data["severity"] = llm_normalized.get("severity", "")
+    collected_data["body_location"] = llm_normalized.get("body_location", "")
+    collected_data["answers"] = {}
+    collected_data["asked_questions"] = []
+    collected_data["pending_question"] = None
+    collected_data["question_count"] = 0
+    collected_data["reasoning"] = {}
+    return collected_data
+
+
+def record_answer_to_pending_question(collected_data, answer_text):
+    pending_question = collected_data.get("pending_question")
+    answers = collected_data.get("answers", {})
+
+    if pending_question:
+        answers[pending_question] = answer_text
+
+    collected_data["answers"] = answers
+    collected_data["pending_question"] = None
+    return collected_data
+
+
+def decide_next_step(user_id, collected_data):
+    history = check_previous_sessions(user_id, collected_data.get("symptoms", ""))
+    emergency_check = emergency_rule_check(collected_data.get("symptoms", ""), collected_data)
+
+    if emergency_check["is_emergency"]:
+        reasoning = {
+            "possible_conditions": [{"name": "Potential medical emergency", "likelihood": "high"}],
+            "possible_specialties": ["Emergency Medicine"],
+            "red_flags": [emergency_check["reason"]],
+            "follow_up_questions": [],
+            "likely_specialty": "Emergency Medicine",
+            "urgency": "emergency",
+            "assessment_complete": True,
+            "summary": emergency_check["reason"],
+            "reasoning_note": "Triggered by emergency safety rules."
+        }
+        collected_data["reasoning"] = reasoning
+        return "complete", reasoning, history
+
+    reasoning = reason_case_with_llm(collected_data)
+    collected_data["reasoning"] = reasoning
+
+    min_questions_required = 2
+    if requires_deeper_questioning(collected_data.get("symptoms", "")):
+        min_questions_required = 4
+
+    if reasoning.get("urgency") == "emergency":
+        return "complete", reasoning, history
+
+    current_q_count = collected_data.get("question_count", 0)
+
+    if reasoning.get("assessment_complete") and current_q_count >= min_questions_required:
+        return "complete", reasoning, history
+
+    follow_up = reasoning.get("follow_up_questions", [])
+    if follow_up:
+        next_question = follow_up[0]
+        collected_data["pending_question"] = next_question
+        collected_data["asked_questions"] = collected_data.get("asked_questions", []) + [next_question]
+        collected_data["question_count"] = current_q_count + 1
+        return "ask", reasoning, history
+
+    if current_q_count < min_questions_required:
+        fallback_question = GENERIC_FALLBACK_QUESTIONS[min(current_q_count, len(GENERIC_FALLBACK_QUESTIONS) - 1)]
+        collected_data["pending_question"] = fallback_question
+        collected_data["asked_questions"] = collected_data.get("asked_questions", []) + [fallback_question]
+        collected_data["question_count"] = current_q_count + 1
+        reasoning["follow_up_questions"] = [fallback_question]
+        reasoning["assessment_complete"] = False
+        return "ask", reasoning, history
+
+    return "complete", reasoning, history
 
 
 # =========================
@@ -800,7 +696,7 @@ def start_session():
         chat_session = ChatSession(
             user_id=user_id,
             session_id=session_id,
-            current_step='initial',
+            current_step='collect_symptoms',
             collected_data=json.dumps({})
         )
 
@@ -809,12 +705,11 @@ def start_session():
 
         initial_message = (
             "Hello! I'm your Health Assistant. Please describe your symptoms in detail. "
-            "For example: chest pain, skin rash, stomach pain, breathing problem, headache, etc."
+            "You can type naturally, for example: "
+            "'I have chest pain after eating', 'I feel short of breath', or 'I have a red itchy rash'."
         )
 
         save_bot_message(chat_session.id, initial_message, 'text')
-
-        chat_session.current_step = 'collect_symptoms'
         db.session.commit()
 
         return jsonify({
@@ -857,32 +752,23 @@ def send_message():
         collected_data = parse_json_data(chat_session.collected_data)
         current_step = chat_session.current_step or 'collect_symptoms'
 
-        # Step 1: collect first symptom message
         if current_step == 'collect_symptoms':
-            collected_data['symptoms'] = message
-            collected_data['category'] = detect_category(message)
-            collected_data['question_index'] = 0
+            llm_normalized = normalize_input_with_llm(message)
+            collected_data = initialize_case_state(collected_data, llm_normalized)
 
-            history = check_previous_sessions(user_id, message)
+            next_action, reasoning, history = decide_next_step(user_id, collected_data)
 
-            intro_message = get_intro_message(collected_data['category'])
-            if history and history.get('has_history'):
-                intro_message += f"\n\nNote: I found a related past consultation from {history['session_date']}."
+            if next_action == "complete":
+                final_message = build_final_message(collected_data, reasoning)
+                buttons = get_buttons_for_result(reasoning)
+                msg_type = 'emergency' if reasoning.get("urgency") == "emergency" else 'recommendation'
 
-            first_question = get_current_question(collected_data)
-
-            if not first_question:
-                result = analyze_and_build_result(collected_data)
-                final_message = build_final_message(collected_data, result)
-                buttons = get_buttons_for_result(result)
-                msg_type = 'emergency' if result['is_emergency'] else 'recommendation'
-
-                save_bot_message(chat_session.id, final_message, msg_type, buttons)
+                save_bot_message(chat_session.id, final_message, msg_type, buttons, extra_payload=reasoning)
 
                 chat_session.current_step = 'completed'
-                chat_session.collected_data = json.dumps(collected_data)
-                chat_session.recommended_specialty = result['specialist']
-                chat_session.risk_level = result['risk_level']
+                chat_session.collected_data = to_json_string(collected_data)
+                chat_session.recommended_specialty = reasoning.get("likely_specialty", "General Physician")
+                chat_session.risk_level = reasoning.get("urgency", "low")
                 chat_session.ended_at = datetime.utcnow()
                 db.session.commit()
 
@@ -890,59 +776,96 @@ def send_message():
                     'message': final_message,
                     'message_type': msg_type,
                     'buttons': buttons,
-                    'specialty': result['specialist'],
-                    'risk_level': result['risk_level']
+                    'specialty': reasoning.get("likely_specialty", "General Physician"),
+                    'risk_level': reasoning.get("urgency", "low"),
+                    'reasoning': reasoning
                 }), 200
 
-            response_message = intro_message + "\n\n" + first_question['question']
+            response_message = build_question_message(reasoning)
 
-            chat_session.current_step = 'questioning'
-            chat_session.collected_data = json.dumps(collected_data)
+            if history and history.get("has_history"):
+                response_message += f"\n\nNote: I found a somewhat related past consultation from {history['session_date']}."
+
+            save_bot_message(chat_session.id, response_message, 'text', extra_payload=reasoning)
+
+            chat_session.current_step = 'dynamic_questioning'
+            chat_session.collected_data = to_json_string(collected_data)
             db.session.commit()
 
             return jsonify({
                 'message': response_message,
                 'message_type': 'text',
-                'step': 'questioning'
+                'step': 'dynamic_questioning',
+                'reasoning': reasoning
             }), 200
 
-        # Step 2: handle category-specific answers
-        elif current_step == 'questioning':
-            category = collected_data.get('category', 'general')
-            questions = get_question_flow(category)
-            question_index = collected_data.get('question_index', 0)
+        elif current_step == 'dynamic_questioning':
+            collected_data = record_answer_to_pending_question(collected_data, message)
 
-            if question_index < len(questions):
-                current_question = questions[question_index]
-                collected_data[current_question['key']] = message
-                collected_data['question_index'] = question_index + 1
+            emergency_check = emergency_rule_check(message, collected_data)
+            if emergency_check["is_emergency"]:
+                reasoning = {
+                    "possible_conditions": [{"name": "Potential medical emergency", "likelihood": "high"}],
+                    "possible_specialties": ["Emergency Medicine"],
+                    "red_flags": [emergency_check["reason"]],
+                    "follow_up_questions": [],
+                    "likely_specialty": "Emergency Medicine",
+                    "urgency": "emergency",
+                    "assessment_complete": True,
+                    "summary": emergency_check["reason"],
+                    "reasoning_note": "Triggered during dynamic questioning by emergency safety rules."
+                }
 
-            next_question = get_current_question(collected_data)
+                collected_data["reasoning"] = reasoning
+                final_message = build_final_message(collected_data, reasoning)
+                buttons = get_buttons_for_result(reasoning)
 
-            if next_question:
-                chat_session.collected_data = json.dumps(collected_data)
-                db.session.commit()
+                save_bot_message(chat_session.id, final_message, 'emergency', buttons, extra_payload=reasoning)
 
-                save_bot_message(chat_session.id, next_question['question'], 'text')
+                chat_session.current_step = 'completed'
+                chat_session.collected_data = to_json_string(collected_data)
+                chat_session.recommended_specialty = "Emergency Medicine"
+                chat_session.risk_level = "emergency"
+                chat_session.ended_at = datetime.utcnow()
                 db.session.commit()
 
                 return jsonify({
-                    'message': next_question['question'],
-                    'message_type': 'text',
-                    'step': 'questioning'
+                    'message': final_message,
+                    'message_type': 'emergency',
+                    'buttons': buttons,
+                    'specialty': 'Emergency Medicine',
+                    'risk_level': 'emergency',
+                    'reasoning': reasoning
                 }), 200
 
-            result = analyze_and_build_result(collected_data)
-            final_message = build_final_message(collected_data, result)
-            buttons = get_buttons_for_result(result)
-            msg_type = 'emergency' if result['is_emergency'] else 'recommendation'
+            next_action, reasoning, _history = decide_next_step(user_id, collected_data)
 
-            save_bot_message(chat_session.id, final_message, msg_type, buttons)
+            if next_action == "ask":
+                response_message = build_question_message(reasoning)
+
+                save_bot_message(chat_session.id, response_message, 'text', extra_payload=reasoning)
+
+                chat_session.current_step = 'dynamic_questioning'
+                chat_session.collected_data = to_json_string(collected_data)
+                db.session.commit()
+
+                return jsonify({
+                    'message': response_message,
+                    'message_type': 'text',
+                    'step': 'dynamic_questioning',
+                    'reasoning': reasoning
+                }), 200
+
+            final_message = build_final_message(collected_data, reasoning)
+            buttons = get_buttons_for_result(reasoning)
+            msg_type = 'emergency' if reasoning.get("urgency") == "emergency" else 'recommendation'
+
+            save_bot_message(chat_session.id, final_message, msg_type, buttons, extra_payload=reasoning)
 
             chat_session.current_step = 'completed'
-            chat_session.collected_data = json.dumps(collected_data)
-            chat_session.recommended_specialty = result['specialist']
-            chat_session.risk_level = result['risk_level']
+            chat_session.collected_data = to_json_string(collected_data)
+            chat_session.recommended_specialty = reasoning.get("likely_specialty", "General Physician")
+            chat_session.risk_level = reasoning.get("urgency", "low")
             chat_session.ended_at = datetime.utcnow()
             db.session.commit()
 
@@ -950,8 +873,9 @@ def send_message():
                 'message': final_message,
                 'message_type': msg_type,
                 'buttons': buttons,
-                'specialty': result['specialist'],
-                'risk_level': result['risk_level']
+                'specialty': reasoning.get("likely_specialty", "General Physician"),
+                'risk_level': reasoning.get("urgency", "low"),
+                'reasoning': reasoning
             }), 200
 
         elif current_step == 'completed':

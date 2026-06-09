@@ -325,6 +325,86 @@ def _patient_required():
     return role == 'patient'
 
 
+def _clean_text(value, fallback=None, max_length=250):
+    if value is None:
+        return fallback
+    text_value = ' '.join(str(value).strip().split())
+    if not text_value:
+        return fallback
+    return text_value[:max_length]
+
+
+def _coerce_float(value, field_name, minimum=None, maximum=None):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f'{field_name} must be a valid number')
+    if minimum is not None and number < minimum:
+        raise ValueError(f'{field_name} cannot be less than {minimum}')
+    if maximum is not None and number > maximum:
+        raise ValueError(f'{field_name} cannot be greater than {maximum}')
+    return number
+
+
+def _coerce_int(value, field_name, minimum=None, maximum=None):
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f'{field_name} must be a valid whole number')
+    if minimum is not None and number < minimum:
+        raise ValueError(f'{field_name} cannot be less than {minimum}')
+    if maximum is not None and number > maximum:
+        raise ValueError(f'{field_name} cannot be greater than {maximum}')
+    return number
+
+
+def _doctor_payload(data, existing_doctor=None):
+    payload = data or {}
+    if not isinstance(payload, dict):
+        raise ValueError('Request body must be JSON')
+
+    required_fields = ['name', 'specialty', 'hospital', 'phone', 'fee']
+    if existing_doctor is None:
+        missing_fields = [
+            field for field in required_fields
+            if _clean_text(payload.get(field), max_length=250) is None
+        ]
+        if _clean_text(payload.get('location', payload.get('address')), max_length=250) is None:
+            missing_fields.append('location')
+        if missing_fields:
+            raise ValueError(f'Missing required doctor fields: {", ".join(missing_fields)}')
+
+    approval_status = payload.get('approval_status', existing_doctor.approval_status if existing_doctor else 'approved')
+    approval_status = str(approval_status or 'approved').strip().lower()
+    if approval_status not in ['approved', 'pending', 'rejected']:
+        raise ValueError('approval_status must be approved, pending, or rejected')
+
+    fee_value = payload.get('fee', payload.get('consultation_fee', existing_doctor.fee if existing_doctor else None))
+
+    return {
+        'name': _clean_text(payload.get('name'), existing_doctor.name if existing_doctor else None, 100),
+        'specialty': _clean_text(payload.get('specialty'), existing_doctor.specialty if existing_doctor else None, 100),
+        'hospital': _clean_text(payload.get('hospital'), existing_doctor.hospital if existing_doctor else None, 200),
+        'location': _clean_text(payload.get('location', payload.get('address')), existing_doctor.location if existing_doctor else None, 200),
+        'phone': _clean_text(payload.get('phone'), existing_doctor.phone if existing_doctor else None, 20),
+        'fee': _coerce_float(fee_value, 'consultation fee', 0),
+        'rating': _coerce_float(payload.get('rating', existing_doctor.rating if existing_doctor else 4.0), 'rating', 0, 5),
+        'qualification': _clean_text(payload.get('qualification'), existing_doctor.qualification if existing_doctor else None, 250),
+        'experience_years': _coerce_int(
+            payload.get('experience_years', existing_doctor.experience_years if existing_doctor else 0) or 0,
+            'experience years',
+            0,
+            80
+        ),
+        'approval_status': approval_status,
+    }
+
+
+def _apply_doctor_payload(doctor, payload):
+    for field, value in payload.items():
+        setattr(doctor, field, value)
+
+
 def _parse_coordinates(data):
     try:
         latitude = float(data.get('latitude'))
@@ -483,20 +563,12 @@ def get_doctor(doctor_id):
 @app.route('/api/doctors', methods=['POST'])
 @admin_required
 def add_doctor():
-    data = request.json
+    try:
+        payload = _doctor_payload(request.get_json(silent=True) or {})
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
 
-    doctor = Doctor(
-        name=data['name'],
-        specialty=data['specialty'],
-        hospital=data['hospital'],
-        location=data['location'],
-        phone=data['phone'],
-        fee=float(data['fee']),
-        rating=float(data.get('rating', 4.0)),
-        qualification=data.get('qualification'),
-        experience_years=int(data.get('experience_years', 0) or 0),
-        approval_status=data.get('approval_status', 'approved')
-    )
+    doctor = Doctor(**payload)
 
     db.session.add(doctor)
     db.session.commit()
@@ -508,19 +580,12 @@ def add_doctor():
 @admin_required
 def update_doctor(doctor_id):
     doctor = Doctor.query.get_or_404(doctor_id)
-    data = request.json
+    try:
+        payload = _doctor_payload(request.get_json(silent=True) or {}, doctor)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
 
-    doctor.name = data.get('name', doctor.name)
-    doctor.specialty = data.get('specialty', doctor.specialty)
-    doctor.hospital = data.get('hospital', doctor.hospital)
-    doctor.location = data.get('location', doctor.location)
-    doctor.phone = data.get('phone', doctor.phone)
-    doctor.fee = float(data.get('fee', doctor.fee))
-    doctor.rating = float(data.get('rating', doctor.rating))
-    doctor.qualification = data.get('qualification', doctor.qualification)
-    doctor.experience_years = int(data.get('experience_years', doctor.experience_years or 0) or 0)
-    doctor.approval_status = data.get('approval_status', doctor.approval_status)
-
+    _apply_doctor_payload(doctor, payload)
     db.session.commit()
     return jsonify(doctor.to_dict())
 
@@ -620,6 +685,8 @@ def initiate_payment():
 
     if appointment.payment_status == 'paid':
         return jsonify({'error': 'This appointment is already paid'}), 400
+    if appointment.payment_status == 'cancelled' or appointment.status == 'cancelled':
+        return jsonify({'error': 'Cancelled appointments cannot be paid'}), 400
 
     appointment.status = 'payment_pending'
     appointment.payment_status = 'pending'
@@ -644,6 +711,31 @@ def initiate_payment():
     response['gateway_page_url'] = payment_session['gateway_page_url']
     response['sslcommerz_session_key'] = payment_session['session_key']
     return jsonify(response)
+
+
+@app.route('/api/appointments/<int:appointment_id>/cancel', methods=['POST'])
+@login_required
+def cancel_appointment(appointment_id):
+    appointment = Appointment.query.filter_by(
+        id=appointment_id,
+        user_id=str(session['user_id'])
+    ).first()
+    if not appointment:
+        return jsonify({'error': 'Appointment was not found'}), 404
+
+    if appointment.payment_status == 'paid':
+        return jsonify({'error': 'Paid appointments cannot be cancelled from this action'}), 400
+
+    if appointment.status == 'cancelled' or appointment.payment_status == 'cancelled':
+        return jsonify(appointment.to_dict())
+
+    if not appointment.derived_status().get('is_pending_payment'):
+        return jsonify({'error': 'Only unpaid pending appointments can be cancelled here'}), 400
+
+    appointment.status = 'cancelled'
+    appointment.payment_status = 'cancelled'
+    db.session.commit()
+    return jsonify(appointment.to_dict())
 
 
 @app.route('/api/payments/success', methods=['GET', 'POST'])
@@ -825,6 +917,23 @@ def admin_approve_doctor(doctor_id):
     })
 
 
+@app.route('/api/admin/doctors/<int:doctor_id>', methods=['PUT'])
+@admin_required
+def admin_update_doctor(doctor_id):
+    doctor = Doctor.query.get_or_404(doctor_id)
+    try:
+        payload = _doctor_payload(request.get_json(silent=True) or {}, doctor)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+
+    _apply_doctor_payload(doctor, payload)
+    db.session.commit()
+    return jsonify({
+        'message': 'Doctor profile updated',
+        'doctor': doctor.to_dict()
+    })
+
+
 @app.route('/api/admin/doctors/<int:doctor_id>/reject', methods=['POST'])
 @admin_required
 def admin_reject_doctor(doctor_id):
@@ -913,6 +1022,7 @@ if __name__ == '__main__':
     print("   - DELETE /api/doctors/<id>")
     print("   - POST /api/appointments")
     print("   - GET  /api/appointments")
+    print("   - POST /api/appointments/<id>/cancel")
     print("   - POST /api/payments/initiate")
     print("   - GET/POST /api/payments/success")
     print("   - GET/POST /api/payments/fail")
@@ -923,6 +1033,7 @@ if __name__ == '__main__':
     print("   - POST /api/emergency/summary")
     print("   - POST /api/emergency/alert")
     print("   - GET  /api/admin/doctors")
+    print("   - PUT  /api/admin/doctors/<id>")
     print("   - POST /api/admin/doctors/<id>/approve")
     print("   - POST /api/admin/doctors/<id>/reject")
     print("   - POST /api/register")

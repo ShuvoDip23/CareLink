@@ -1,192 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - CareLink</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#1E3A8A',
-                        'primary-dark': '#1e40af',
-                        accent: '#0F766E',
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'system-ui', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
-    <style>
-        * { font-family: 'Inter', sans-serif; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register - CareLink</title>
+  <link rel="stylesheet" href="css/style.css" />
 </head>
-<body class="bg-gray-50">
-    <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-md w-full space-y-8">
-            <!-- Logo -->
-            <div class="text-center">
-                <div class="flex items-center justify-center space-x-3 mb-4">
-                    <div class="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
-                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    </div>
-                    <span class="text-3xl font-bold text-slate-900">CareLink</span>
-                </div>
-                <h2 class="text-2xl font-bold text-slate-900">Create your account</h2>
-                <p class="mt-2 text-sm text-slate-600">Join CareLink to access healthcare services</p>
-            </div>
-
-            <!-- Alert Messages -->
-            <div id="alertBox" class="hidden rounded-lg p-4"></div>
-
-            <!-- Register Form -->
-            <form id="registerForm" class="mt-8 space-y-6">
-                <div class="space-y-4">
-                    <div>
-                        <label for="name" class="block text-sm font-medium text-slate-700 mb-2">Full Name</label>
-                        <input id="name" name="name" type="text" required 
-                            class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-slate-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                            placeholder="John Doe">
-                    </div>
-                    <div>
-                        <label for="email" class="block text-sm font-medium text-slate-700 mb-2">Email address</label>
-                        <input id="email" name="email" type="email" required 
-                            class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-slate-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                            placeholder="you@example.com">
-                    </div>
-                    <div>
-                        <label for="password" class="block text-sm font-medium text-slate-700 mb-2">Password</label>
-                        <input id="password" name="password" type="password" required 
-                            class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-slate-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                            placeholder="••••••••">
-                        <p class="mt-1 text-xs text-slate-500">Must be at least 6 characters</p>
-                    </div>
-                    <div>
-                        <label for="confirmPassword" class="block text-sm font-medium text-slate-700 mb-2">Confirm Password</label>
-                        <input id="confirmPassword" name="confirmPassword" type="password" required 
-                            class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-slate-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                            placeholder="••••••••">
-                    </div>
-                </div>
-
-                <div class="flex items-center">
-                    <input id="terms" name="terms" type="checkbox" required
-                        class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
-                    <label for="terms" class="ml-2 block text-sm text-slate-700">
-                        I agree to the <a href="#" class="text-primary hover:text-primary-dark font-medium">Terms of Service</a> and <a href="#" class="text-primary hover:text-primary-dark font-medium">Privacy Policy</a>
-                    </label>
-                </div>
-
-                <div>
-                    <button type="submit" id="registerButton"
-                        class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all">
-                        <span id="registerButtonText">Create account</span>
-                        <span id="registerSpinner" class="hidden ml-2">
-                            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                        </span>
-                    </button>
-                </div>
-
-                <div class="text-center">
-                    <p class="text-sm text-slate-600">
-                        Already have an account?
-                        <a href="login.html" class="font-semibold text-primary hover:text-primary-dark">
-                            Sign in
-                        </a>
-                    </p>
-                </div>
-            </form>
-        </div>
+<body>
+  <nav class="site-nav">
+    <div class="container nav-inner">
+      <a href="index.html" class="nav-brand" aria-label="CareLink home">
+        <span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 12h14"/></svg></span>
+        <span class="brand-name">CareLink</span>
+      </a>
+      <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-controls="navMenu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <ul class="nav-menu" id="navMenu">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="doctors.html">Find Doctors</a></li>
+        <li id="navAppointments" style="display:none;"><a href="appointments.html">Appointments</a></li>
+        <li id="navAdmin" style="display:none;"><a href="admin_add_doctor.html">Admin</a></li>
+        <li id="navLogin"><a href="login.html">Login</a></li>
+        <li id="navRegister" class="nav-cta"><a href="register.html" class="active">Register</a></li>
+        <li id="navUser" style="display:none;"></li>
+        <li id="navLogout" class="nav-logout" style="display:none;"><a href="#" onclick="logoutUser(); return false;">Logout</a></li>
+      </ul>
     </div>
+  </nav>
 
-    <script>
-        const API_URL = 'http://127.0.0.1:5000';
+  <main class="auth-page">
+    <div class="container auth-layout auth-layout-wide">
+      <section class="auth-card register-card">
+        <div class="auth-card-header">
+          <span class="auth-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 12h14"/></svg></span>
+          <span class="eyebrow">Join CareLink</span>
+          <h1>Create account</h1>
+          <p>Choose patient access or submit a doctor profile for approval.</p>
+        </div>
+        <div id="alertBox" class="alert" role="alert"></div>
 
-        function showAlert(message, type) {
-            const alertBox = document.getElementById('alertBox');
-            alertBox.className = `rounded-lg p-4 ${type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-green-50 text-green-800 border border-green-200'}`;
-            alertBox.textContent = message;
-            alertBox.classList.remove('hidden');
-            
-            setTimeout(() => {
-                alertBox.classList.add('hidden');
-            }, 5000);
-        }
+        <form id="registerForm" class="auth-form">
+          <div class="account-toggle" role="group" aria-label="Account type">
+            <button type="button" id="patientTypeBtn" class="active" data-account-type="patient">Patient</button>
+            <button type="button" id="doctorTypeBtn" data-account-type="doctor">Doctor</button>
+          </div>
+          <input type="hidden" id="accountType" value="patient" />
 
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const name = document.getElementById('name').value;
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            const registerButton = document.getElementById('registerButton');
-            const registerButtonText = document.getElementById('registerButtonText');
-            const registerSpinner = document.getElementById('registerSpinner');
-            
-            // Validation
-            if (password.length < 6) {
-                showAlert('Password must be at least 6 characters long', 'error');
-                return;
-            }
-            
-            if (password !== confirmPassword) {
-                showAlert('Passwords do not match', 'error');
-                return;
-            }
-            
-            // Show loading state
-            registerButton.disabled = true;
-            registerButtonText.textContent = 'Creating account...';
-            registerSpinner.classList.remove('hidden');
-            
-            try {
-                const response = await fetch(`${API_URL}/api/register`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify({ name, email, password })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    showAlert('Account created successfully! Redirecting...', 'success');
-                    
-                    // Store user info in localStorage
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    
-                    setTimeout(() => {
-                        window.location.href = 'index.html';
-                    }, 1000);
-                } else {
-                    showAlert(data.error || 'Registration failed. Please try again.', 'error');
-                    registerButton.disabled = false;
-                    registerButtonText.textContent = 'Create account';
-                    registerSpinner.classList.add('hidden');
-                }
-            } catch (error) {
-                showAlert('Network error. Please check if the backend is running.', 'error');
-                registerButton.disabled = false;
-                registerButtonText.textContent = 'Create account';
-                registerSpinner.classList.add('hidden');
-            }
-        });
-    </script>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="name">Full name</label>
+              <input id="name" name="name" type="text" autocomplete="name" required placeholder="Your full name" />
+            </div>
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" autocomplete="email" required placeholder="you@example.com" />
+            </div>
+            <div class="form-group">
+              <label for="password">Password</label>
+              <input id="password" name="password" type="password" autocomplete="new-password" required placeholder="Minimum 6 characters" />
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">Confirm password</label>
+              <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" required placeholder="Repeat password" />
+            </div>
+          </div>
+
+          <div id="doctorFields" class="form-grid" style="display:none;">
+            <div class="form-group">
+              <label for="specialty">Specialty</label>
+              <input id="specialty" name="specialty" type="text" placeholder="Cardiologist" />
+            </div>
+            <div class="form-group">
+              <label for="hospital">Hospital or clinic</label>
+              <input id="hospital" name="hospital" type="text" placeholder="Square Hospital" />
+            </div>
+            <div class="form-group">
+              <label for="location">Location</label>
+              <input id="location" name="location" type="text" placeholder="Dhaka" />
+            </div>
+            <div class="form-group">
+              <label for="phone">Phone</label>
+              <input id="phone" name="phone" type="tel" placeholder="+8801XXXXXXXXX" />
+            </div>
+            <div class="form-group">
+              <label for="fee">Consultation fee</label>
+              <input id="fee" name="fee" type="number" min="0" step="50" placeholder="1500" />
+            </div>
+            <div class="form-group">
+              <label for="experienceYears">Years of experience</label>
+              <input id="experienceYears" name="experienceYears" type="number" min="0" max="60" step="1" placeholder="8" />
+            </div>
+            <div class="form-group full">
+              <label for="qualification">Qualification or license info</label>
+              <textarea id="qualification" name="qualification" rows="3" placeholder="MBBS, FCPS, BMDC registration or relevant license"></textarea>
+            </div>
+          </div>
+
+          <button type="submit" id="registerButton" class="btn btn-primary btn-block">Create account</button>
+        </form>
+
+        <p class="auth-switch">
+          Already have an account? <a href="login.html">Sign in</a>
+        </p>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/main.js"></script>
+  <script src="js/register.js"></script>
 </body>
 </html>

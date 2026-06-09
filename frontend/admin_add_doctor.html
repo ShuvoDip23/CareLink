@@ -1,585 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Add Doctor - CareLink Admin</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-
-    .container {
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      width: 100%;
-      max-width: 600px;
-      padding: 40px;
-      animation: slideIn 0.5s ease-out;
-    }
-
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(-30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .header {
-      text-align: center;
-      margin-bottom: 35px;
-    }
-
-    .logo {
-      width: 60px;
-      height: 60px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      margin: 0 auto 15px;
-      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    }
-
-    h1 {
-      color: #2d3748;
-      font-size: 28px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    .subtitle {
-      color: #718096;
-      font-size: 14px;
-    }
-
-    .form-group {
-      margin-bottom: 20px;
-    }
-
-    label {
-      display: block;
-      color: #2d3748;
-      font-weight: 600;
-      font-size: 14px;
-      margin-bottom: 8px;
-    }
-
-    label .required {
-      color: #e53e3e;
-      margin-left: 2px;
-    }
-
-    input,
-    select {
-      width: 100%;
-      padding: 12px 16px;
-      border: 2px solid #e2e8f0;
-      border-radius: 8px;
-      font-size: 15px;
-      color: #2d3748;
-      transition: all 0.3s ease;
-      background: white;
-    }
-
-    input:focus,
-    select:focus {
-      outline: none;
-      border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-
-    input::placeholder {
-      color: #a0aec0;
-    }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 15px;
-    }
-
-    .btn {
-      width: 100%;
-      padding: 14px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      margin-top: 10px;
-      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    }
-
-    .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
-    }
-
-    .btn:active {
-      transform: translateY(0);
-    }
-
-    .btn:disabled {
-      background: #cbd5e0;
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-    }
-
-    .message {
-      padding: 14px 18px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      font-size: 14px;
-      font-weight: 500;
-      display: none;
-      align-items: center;
-      gap: 10px;
-      animation: messageSlide 0.4s ease-out;
-    }
-
-    @keyframes messageSlide {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .message.show {
-      display: flex;
-    }
-
-    .message.success {
-      background: #c6f6d5;
-      color: #22543d;
-      border-left: 4px solid #38a169;
-    }
-
-    .message.error {
-      background: #fed7d7;
-      color: #742a2a;
-      border-left: 4px solid #e53e3e;
-    }
-
-    .message-icon {
-      font-size: 18px;
-    }
-
-    .specialty-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    .specialty-option {
-      padding: 8px 12px;
-      background: #f7fafc;
-      border: 2px solid #e2e8f0;
-      border-radius: 6px;
-      font-size: 13px;
-      color: #4a5568;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      text-align: center;
-    }
-
-    .specialty-option:hover {
-      background: #edf2f7;
-      border-color: #cbd5e0;
-    }
-
-    .specialty-option.selected {
-      background: #667eea;
-      color: white;
-      border-color: #667eea;
-    }
-
-    .info-text {
-      font-size: 12px;
-      color: #718096;
-      margin-top: 5px;
-    }
-
-    .rating-input {
-      display: flex;
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    .star {
-      font-size: 28px;
-      cursor: pointer;
-      color: #e2e8f0;
-      transition: all 0.2s ease;
-    }
-
-    .star.active {
-      color: #f6ad55;
-    }
-
-    .star:hover {
-      transform: scale(1.15);
-    }
-
-    #ratingValue {
-      display: none;
-    }
-
-    .footer {
-      text-align: center;
-      margin-top: 30px;
-      padding-top: 20px;
-      border-top: 1px solid #e2e8f0;
-    }
-
-    .footer-link {
-      color: #667eea;
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 600;
-      transition: color 0.2s ease;
-    }
-
-    .footer-link:hover {
-      color: #764ba2;
-    }
-
-    .spinner {
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top: 2px solid white;
-      border-radius: 50%;
-      width: 16px;
-      height: 16px;
-      animation: spin 0.8s linear infinite;
-      display: none;
-      margin-left: 8px;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .btn.loading .spinner {
-      display: inline-block;
-    }
-
-    .btn.loading .btn-text {
-      opacity: 0.7;
-    }
-
-    @media (max-width: 640px) {
-      .container {
-        padding: 30px 20px;
-      }
-
-      .form-row {
-        grid-template-columns: 1fr;
-      }
-
-      h1 {
-        font-size: 24px;
-      }
-
-      .specialty-grid {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      }
-    }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Doctor Management - CareLink</title>
+  <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="logo">🩺</div>
-      <h1>Add New Doctor</h1>
-      <p class="subtitle">CareLink Admin Panel</p>
-    </div>
-
-    <div id="messageBox" class="message"></div>
-
-    <form id="doctorForm">
-      <div class="form-group">
-        <label for="name">Doctor Name <span class="required">*</span></label>
-        <input 
-          type="text" 
-          id="name" 
-          name="name" 
-          placeholder="Dr. John Smith" 
-          required
-          autocomplete="off"
-        >
-      </div>
-
-      <div class="form-group">
-  <label>Specialty <span class="required">*</span></label>
-  <select id="specialty" name="specialty" required>
-    <option value="">Select Specialty</option>
-    <option value="Cardiologist">Cardiologist</option>
-    <option value="Dermatologist">Dermatologist</option>
-    <option value="General Physician">General Physician</option>
-    <option value="ENT Specialist">ENT Specialist</option>
-    <option value="Neurologist">Neurologist</option>
-    <option value="Orthopedic">Orthopedic</option>
-    <option value="Gastroenterologist">Gastroenterologist</option>
-    <option value="Ophthalmologist">Ophthalmologist</option>
-  </select>
-</div>
-
-      <div class="form-group">
-        <label for="hospital">Hospital <span class="required">*</span></label>
-        <input 
-          type="text" 
-          id="hospital" 
-          name="hospital" 
-          placeholder="City General Hospital" 
-          required
-          autocomplete="off"
-        >
-      </div>
-
-      <div class="form-group">
-        <label for="location">Location <span class="required">*</span></label>
-        <input 
-          type="text" 
-          id="location" 
-          name="location" 
-          placeholder="New York, NY" 
-          required
-          autocomplete="off"
-        >
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="phone">Phone Number <span class="required">*</span></label>
-          <input 
-                type="tel" 
-                id="phone" 
-                name="phone" 
-                placeholder="01747410000"
-                pattern="[0-9]{11}"
-                maxlength="11"
-                minlength="11"
-                required
-                autocomplete="off"
-                >
-        </div>
-
-        <div class="form-group">
-          <label for="fee">Consultation Fee (taka) <span class="required">*</span></label>
-          <input 
-            type="number" 
-            id="fee" 
-            name="fee" 
-            placeholder="150" 
-            min="0" 
-            step="1" 
-            required
-          >
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>Rating <span class="required">*</span></label>
-        <input type="hidden" id="ratingValue" name="rating" value="0" required>
-        <div class="rating-input" id="ratingStars">
-          <span class="star" data-rating="1">★</span>
-          <span class="star" data-rating="2">★</span>
-          <span class="star" data-rating="3">★</span>
-          <span class="star" data-rating="4">★</span>
-          <span class="star" data-rating="5">★</span>
-        </div>
-        <p class="info-text">Click to select rating (1-5 stars)</p>
-      </div>
-
-      <button type="submit" class="btn" id="submitBtn">
-        <span class="btn-text">Add Doctor</span>
-        <div class="spinner"></div>
+  <nav class="site-nav">
+    <div class="container nav-inner">
+      <a href="index.html" class="nav-brand" aria-label="CareLink home">
+        <span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 12h14"/></svg></span>
+        <span class="brand-name">CareLink</span>
+      </a>
+      <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-controls="navMenu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
-    </form>
-
-    <div class="footer">
-      <a href="/" class="footer-link">← Back to Dashboard</a>
+      <ul class="nav-menu" id="navMenu">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="doctors.html">Find Doctors</a></li>
+        <li id="navAppointments" style="display:none;"><a href="appointments.html">Appointments</a></li>
+        <li id="navAdmin" style="display:none;"><a href="admin_add_doctor.html" class="active">Admin</a></li>
+        <li id="navLogin"><a href="login.html">Login</a></li>
+        <li id="navRegister" class="nav-cta"><a href="register.html">Register</a></li>
+        <li id="navUser" style="display:none;"></li>
+        <li id="navLogout" class="nav-logout" style="display:none;"><a href="#" onclick="logoutUser(); return false;">Logout</a></li>
+      </ul>
     </div>
-  </div>
+  </nav>
 
-  <script>
-    // Rating System
-    const stars = document.querySelectorAll('.star');
-    const ratingInput = document.getElementById('ratingValue');
-    let selectedRating = 0;
+  <main class="page">
+    <section class="page-hero">
+      <div class="container">
+        <span class="eyebrow">Admin workspace</span>
+        <h1>Doctor approvals and <span class="gradient-text">manual entries.</span></h1>
+        <p>This admin page is available to authorized administrators for reviewing doctor registrations and maintaining public profile data.</p>
+      </div>
+    </section>
 
-    stars.forEach(star => {
-      star.addEventListener('click', function() {
-        selectedRating = parseFloat(this.getAttribute('data-rating'));
-        ratingInput.value = selectedRating;
-        updateStars(selectedRating);
-      });
+    <section class="admin-section">
+      <div class="container admin-grid">
+        <section class="admin-panel">
+          <div class="section-header">
+            <span class="section-chip">Pending doctors</span>
+            <h2>Review doctor registrations</h2>
+            <p>Approving a doctor makes the profile appear in the public doctor directory.</p>
+          </div>
+          <div id="adminAlert" class="alert" role="alert"></div>
+          <div id="pendingDoctors" class="admin-list"></div>
+          <div id="adminEmpty" class="no-results" style="display:none;">
+            <span class="empty-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 12 2 2 4-4"/><path d="M12 3 5 6v5c0 4.4 2.8 8.4 7 10 4.2-1.6 7-5.6 7-10V6l-7-3Z"/></svg></span>
+            <h3>No pending doctors</h3>
+            <p>New doctor registrations will appear here for approval.</p>
+          </div>
 
-      star.addEventListener('mouseenter', function() {
-        const hoverRating = parseFloat(this.getAttribute('data-rating'));
-        updateStars(hoverRating);
-      });
-    });
+          <div class="section-header admin-subheader">
+            <span class="section-chip">Doctor profiles</span>
+            <h2>Manage public data</h2>
+            <p>Edit experience, fees, hospitals, qualifications, ratings, and approval status.</p>
+          </div>
+          <div id="allDoctors" class="admin-list"></div>
+        </section>
 
-    document.getElementById('ratingStars').addEventListener('mouseleave', function() {
-      updateStars(selectedRating);
-    });
+        <aside class="admin-panel">
+          <div class="section-header">
+            <span class="section-chip">Manual add</span>
+            <h2>Add doctor</h2>
+            <p>Manual entries can be approved immediately when an administrator has reviewed the profile details.</p>
+          </div>
 
-    function updateStars(rating) {
-      stars.forEach(star => {
-        const starRating = parseFloat(star.getAttribute('data-rating'));
-        if (starRating <= rating) {
-          star.classList.add('active');
-        } else {
-          star.classList.remove('active');
-        }
-      });
-    }
+          <form id="manualDoctorForm" class="auth-form">
+            <div class="form-group">
+              <label for="doctorName">Doctor name</label>
+              <input id="doctorName" required placeholder="Dr. Amina Rahman" />
+            </div>
+            <div class="form-group">
+              <label for="doctorSpecialty">Specialty</label>
+              <input id="doctorSpecialty" required placeholder="Cardiologist" />
+            </div>
+            <div class="form-group">
+              <label for="doctorHospital">Hospital or clinic</label>
+              <input id="doctorHospital" required placeholder="CareLink Medical Center" />
+            </div>
+            <div class="form-group">
+              <label for="doctorLocation">Location</label>
+              <input id="doctorLocation" required placeholder="Dhaka" />
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="doctorPhone">Phone</label>
+                <input id="doctorPhone" required placeholder="+8801XXXXXXXXX" />
+              </div>
+              <div class="form-group">
+                <label for="doctorFee">Fee</label>
+                <input id="doctorFee" type="number" min="0" step="50" required placeholder="1500" />
+              </div>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="doctorRating">Rating</label>
+                <input id="doctorRating" type="number" min="1" max="5" step="0.1" value="4.8" required />
+              </div>
+              <div class="form-group">
+                <label for="doctorExperience">Experience</label>
+                <input id="doctorExperience" type="number" min="0" max="60" step="1" value="5" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="doctorQualification">Qualification</label>
+              <textarea id="doctorQualification" rows="3" placeholder="MBBS, FCPS"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="doctorStatus">Approval status</label>
+              <select id="doctorStatus">
+                <option value="approved">Approved</option>
+                <option value="pending">Pending</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+            <div class="form-actions">
+              <button type="submit" id="doctorSubmitButton" class="btn btn-primary">Add approved doctor</button>
+              <button type="button" id="cancelDoctorEdit" class="btn btn-secondary" style="display:none;">Cancel</button>
+            </div>
+          </form>
+        </aside>
+      </div>
+    </section>
+  </main>
 
-    // Message Display
-    function showMessage(message, type) {
-      const messageBox = document.getElementById('messageBox');
-      const icon = type === 'success' ? '✓' : '✕';
-      
-      messageBox.innerHTML = `
-        <span class="message-icon">${icon}</span>
-        <span>${message}</span>
-      `;
-      
-      messageBox.className = `message ${type} show`;
-      
-      setTimeout(() => {
-        messageBox.classList.remove('show');
-      }, 5000);
-    }
-
-    // Form Submission
-    const form = document.getElementById('doctorForm');
-    const submitBtn = document.getElementById('submitBtn');
-
-    form.addEventListener('submit', async function(e) {
-      e.preventDefault();
-
-      // Validate rating
-      if (selectedRating === 0) {
-        showMessage('Please select a rating for the doctor', 'error');
-        return;
-      }
-
-      // Get form data
-      const formData = new FormData(form);
-      const doctorData = {
-        name: formData.get('name').trim(),
-        specialty: formData.get('specialty'),
-        hospital: formData.get('hospital').trim(),
-        location: formData.get('location').trim(),
-        phone: formData.get('phone').trim(),
-        fee: parseFloat(formData.get('fee')),
-        rating: parseFloat(formData.get('rating'))
-      };
-
-      // Validate all fields
-      if (!doctorData.name || !doctorData.specialty || !doctorData.hospital || 
-          !doctorData.location || !doctorData.phone || !doctorData.fee || !doctorData.rating) {
-        showMessage('Please fill in all required fields', 'error');
-        return;
-      }
-
-      // Show loading state
-      submitBtn.disabled = true;
-      submitBtn.classList.add('loading');
-
-      try {
-        // Send POST request to backend
-        const response = await fetch('http://127.0.0.1:5000/api/doctors', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(doctorData)
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          // Success
-          showMessage(`✓ Doctor ${doctorData.name} added successfully!`, 'success');
-          
-          // Reset form
-          form.reset();
-          selectedRating = 0;
-          ratingInput.value = 0;
-          updateStars(0);
-          
-          // Scroll to top to show message
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        } else {
-          // Error from server
-          showMessage(result.error || 'Failed to add doctor. Please try again.', 'error');
-        }
-      } catch (error) {
-        // Network or other error
-        console.error('Error:', error);
-        showMessage('Network error. Please check if the backend is running at http://127.0.0.1:5000', 'error');
-      } finally {
-        // Remove loading state
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('loading');
-      }
-    });
-
-    // Phone number formatting (optional enhancement)
-            const phoneInput = document.getElementById('phone');
-
-            phoneInput.addEventListener('input', function(e) {
-            // Allow only digits
-            e.target.value = e.target.value.replace(/\D/g, '');
-
-            // Limit to 11 digits
-            if (e.target.value.length > 11) {
-                e.target.value = e.target.value.slice(0, 11);
-            }
-            });
-
-    // Fee input validation
-    const feeInput = document.getElementById('fee');
-    feeInput.addEventListener('input', function(e) {
-      if (e.target.value < 0) {
-        e.target.value = 0;
-      }
-    });
-
-    // Initialize rating display
-    updateStars(0);
-  </script>
+  <script src="js/main.js"></script>
+  <script src="js/admin.js"></script>
 </body>
 </html>

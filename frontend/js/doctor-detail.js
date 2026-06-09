@@ -1,16 +1,51 @@
-// Doctor detail page JavaScript
 let currentDoctor = null;
+let isDoctorPageAuthenticated = false;
+let currentPatient = null;
 
-// Get doctor ID from URL
 function getDoctorIdFromUrl() {
-  const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get("id");
+  return new URLSearchParams(window.location.search).get("id");
 }
 
-// Fetch doctor details
+function setBookingState(isAuthenticated, user = null) {
+  isDoctorPageAuthenticated = isAuthenticated;
+  currentPatient = user;
+
+  const loggedOut = document.getElementById("bookingLoggedOut");
+  const loggedIn = document.getElementById("bookingLoggedIn");
+  if (loggedOut) loggedOut.style.display = isAuthenticated ? "none" : "grid";
+  if (loggedIn) loggedIn.style.display = isAuthenticated ? "block" : "none";
+
+  const patientName = document.getElementById("patientName");
+  if (patientName && user?.name) {
+    patientName.value = user.name;
+  }
+}
+
+function setupTimeSlotButtons() {
+  const timeInput = document.getElementById("appointmentTime");
+  const slotGrid = document.getElementById("timeSlotGrid");
+  if (!timeInput || !slotGrid) return;
+
+  slotGrid.querySelectorAll(".time-slot").forEach((slot) => {
+    slot.addEventListener("click", () => {
+      slotGrid.querySelectorAll(".time-slot").forEach((item) => item.classList.remove("active"));
+      slot.classList.add("active");
+      timeInput.value = slot.dataset.time || "";
+    });
+  });
+}
+
+async function checkDoctorPageAuth() {
+  try {
+    const data = await getJson("/me");
+    setBookingState(Boolean(data.authenticated), data.user || null);
+  } catch (error) {
+    setBookingState(false);
+  }
+}
+
 async function fetchDoctorDetails() {
   const doctorId = getDoctorIdFromUrl();
-
   if (!doctorId) {
     window.location.href = "doctors.html";
     return;
@@ -19,94 +54,120 @@ async function fetchDoctorDetails() {
   showLoading();
 
   try {
-    const response = await fetch(`${API_BASE_URL}/doctors/${doctorId}`);
-    if (!response.ok) throw new Error("Failed to fetch doctor details");
-
-    currentDoctor = await response.json();
+    currentDoctor = await getJson(`/doctors/${doctorId}`);
     displayDoctorDetails(currentDoctor);
   } catch (error) {
     console.error("Error fetching doctor details:", error);
-    document.getElementById("doctorDetail").innerHTML = `
-            <div class="no-results">
-                <span style="font-size: 48px;">⚠️</span>
-                <p>Failed to load doctor details. Please try again later.</p>
-                <a href="doctors.html" class="btn btn-primary">Back to Doctors</a>
-            </div>
-        `;
+    const doctorDetail = document.getElementById("doctorDetail");
+    if (doctorDetail) {
+      doctorDetail.innerHTML = `
+        <div class="no-results-card">
+          <span class="empty-icon">${svgIcon("shield")}</span>
+          <h3>Doctor profile unavailable</h3>
+          <p>The doctor may be pending approval or the profile could not be loaded.</p>
+          <a href="doctors.html" class="btn btn-primary" style="margin-top:16px;">Back to Doctors</a>
+        </div>
+      `;
+      doctorDetail.style.display = "block";
+    }
   } finally {
     hideLoading();
   }
 }
 
-// Display doctor details
 function displayDoctorDetails(doctor) {
+  document.getElementById("doctorAvatarLarge").innerHTML = renderDoctorIcon();
   document.getElementById("doctorName").textContent = doctor.name;
   document.getElementById("doctorSpecialty").textContent = doctor.specialty;
-  document.getElementById("doctorRating").innerHTML = `⭐ ${doctor.rating}`;
+  const rating = Number(doctor.rating || 0).toFixed(1);
+  document.getElementById("doctorRating").innerHTML = `
+    <span class="stars">${renderStars(rating)}</span>
+    <span>${escapeHtml(rating)} patient rating</span>
+  `;
   document.getElementById("doctorHospital").textContent = doctor.hospital;
   document.getElementById("doctorLocation").textContent = doctor.location;
   document.getElementById("doctorPhone").textContent = doctor.phone;
-  document.getElementById("doctorFee").textContent = `$${doctor.fee}`;
+  document.getElementById("doctorFee").textContent = formatFee(doctor.fee);
+  document.getElementById("doctorQualification").textContent = doctor.qualification || "Not provided";
+  const experienceYears = Number(doctor.experience_years || 0);
+  document.getElementById("doctorExperience").textContent = experienceYears > 0 ? `${experienceYears} years experience` : "Experience not updated";
+  const bookingFee = document.getElementById("bookingFee");
+  if (bookingFee) bookingFee.textContent = formatFee(doctor.fee);
 
   document.getElementById("doctorDetail").style.display = "grid";
 }
 
-// Book appointment
 async function bookAppointment(event) {
   event.preventDefault();
 
-  const patientName = document.getElementById("patientName").value;
-  const appointmentDate = document.getElementById("appointmentDate").value;
-  const appointmentTime = document.getElementById("appointmentTime").value;
-  const reason = document.getElementById("reason").value;
+  if (!isDoctorPageAuthenticated) {
+    setBookingState(false);
+    return;
+  }
 
   const appointmentData = {
-    user_id: getUserId(),
-    user_name: patientName,
+    user_name: document.getElementById("patientName").value.trim(),
     doctor_id: currentDoctor.id,
-    appointment_date: appointmentDate,
-    appointment_time: appointmentTime,
-    reason: reason,
+    appointment_date: document.getElementById("appointmentDate").value,
+    appointment_time: document.getElementById("appointmentTime").value,
+    reason: document.getElementById("reason").value.trim(),
   };
 
+  if (!appointmentData.appointment_time) {
+    alert("Please select an appointment time.");
+    return;
+  }
+
+  const submitButton = document.getElementById("bookingSubmit");
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = "Opening SSLCommerz...";
+  }
+
   try {
-    const response = await fetch(`${API_BASE_URL}/appointments`, {
+    const response = await apiFetch("/appointments", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(appointmentData),
     });
 
-    if (!response.ok) throw new Error("Failed to book appointment");
+    if (response.status === 401) {
+      setBookingState(false);
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = "Proceed to Payment";
+      }
+      return;
+    }
 
     const result = await response.json();
-    console.log("Appointment booked:", result);
+    if (!response.ok) {
+      throw new Error(result.error || "Failed to book appointment");
+    }
 
-    // Show success modal
-    showModal();
+    const paymentUrl = result.payment_url || result.gateway_page_url;
+    if (!paymentUrl) {
+      throw new Error("Appointment was created, but the payment gateway URL was not returned.");
+    }
 
-    // Reset form
-    document.getElementById("bookingForm").reset();
+    window.location.href = paymentUrl;
   } catch (error) {
     console.error("Error booking appointment:", error);
-    alert("Failed to book appointment. Please try again.");
+    alert(error.message || "Failed to book appointment. Please try again.");
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = "Proceed to Payment";
+    }
   }
 }
 
-// Show success modal
 function showModal() {
-  const modal = document.getElementById("successModal");
-  modal.classList.add("active");
+  document.getElementById("successModal")?.classList.add("active");
 }
 
-// Close modal
 function closeModal() {
-  const modal = document.getElementById("successModal");
-  modal.classList.remove("active");
+  document.getElementById("successModal")?.classList.remove("active");
 }
 
-// Close modal when clicking outside
 window.onclick = function (event) {
   const modal = document.getElementById("successModal");
   if (event.target === modal) {
@@ -114,8 +175,10 @@ window.onclick = function (event) {
   }
 };
 
-// Initialize on page load
-document.addEventListener("DOMContentLoaded", function () {
-  fetchDoctorDetails();
+document.addEventListener("DOMContentLoaded", async () => {
   setMinDate();
+  setupTimeSlotButtons();
+  await checkDoctorPageAuth();
+  await fetchDoctorDetails();
+  observeRevealElements();
 });

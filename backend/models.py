@@ -119,6 +119,7 @@ class Doctor(db.Model):
             'location': self.location,
             'phone': self.phone,
             'fee': self.fee,
+            'consultation_fee': self.fee,
             'rating': self.rating,
             'qualification': self.qualification,
             'experience_years': self.experience_years,
@@ -148,8 +149,51 @@ class Appointment(db.Model):
 
     doctor = db.relationship('Doctor', backref='appointments')
 
-    def to_dict(self):
+    def appointment_datetime(self):
+        date_value = str(self.appointment_date or '').strip()
+        time_value = str(self.appointment_time or '').strip()
+        for pattern in (
+            '%Y-%m-%d %H:%M',
+            '%Y-%m-%d %I:%M %p',
+            '%Y-%m-%d %I %p',
+            '%Y-%m-%d',
+        ):
+            try:
+                return datetime.strptime(f'{date_value} {time_value}'.strip(), pattern)
+            except ValueError:
+                continue
+        return None
+
+    def derived_status(self):
+        payment_status = str(self.payment_status or 'pending').lower()
+        status = str(self.status or 'scheduled').lower()
+        appointment_dt = self.appointment_datetime()
+        is_cancelled = payment_status == 'cancelled' or status == 'cancelled'
+        is_past = bool(appointment_dt and appointment_dt < datetime.utcnow())
+        is_paid = payment_status in ['paid', 'confirmed']
+        is_upcoming = bool(appointment_dt and appointment_dt >= datetime.utcnow() and is_paid and not is_cancelled)
+        is_pending_payment = payment_status in ['pending', 'failed'] and not is_cancelled and not is_past
+
+        if is_cancelled:
+            display_status = 'Cancelled'
+        elif is_past:
+            display_status = 'Past'
+        elif is_pending_payment:
+            display_status = 'Pending payment'
+        elif is_upcoming:
+            display_status = 'Upcoming'
+        else:
+            display_status = status.replace('_', ' ').title()
+
         return {
+            'is_past': is_past,
+            'is_upcoming': is_upcoming,
+            'is_pending_payment': is_pending_payment,
+            'display_status': display_status,
+        }
+
+    def to_dict(self):
+        payload = {
             'id': self.id,
             'user_id': self.user_id,
             'user_name': self.user_name,
@@ -165,6 +209,8 @@ class Appointment(db.Model):
             'payment_method': self.payment_method,
             'created_at': self.created_at.isoformat()
         }
+        payload.update(self.derived_status())
+        return payload
 
 
 class EmergencyProvider(db.Model):
