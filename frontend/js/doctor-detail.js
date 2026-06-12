@@ -1,6 +1,7 @@
 let currentDoctor = null;
 let isDoctorPageAuthenticated = false;
 let currentPatient = null;
+let availableSlotTimes = new Set();
 
 function getDoctorIdFromUrl() {
   return new URLSearchParams(window.location.search).get("id");
@@ -28,11 +29,87 @@ function setupTimeSlotButtons() {
 
   slotGrid.querySelectorAll(".time-slot").forEach((slot) => {
     slot.addEventListener("click", () => {
+      if (slot.disabled || slot.dataset.available !== "true") {
+        alert(slot.dataset.booked === "true" ? "This slot is already booked." : "This doctor is not available at the selected time.");
+        return;
+      }
       slotGrid.querySelectorAll(".time-slot").forEach((item) => item.classList.remove("active"));
       slot.classList.add("active");
       timeInput.value = slot.dataset.time || "";
+      updateBookingSubmitState();
     });
   });
+}
+
+function updateBookingSubmitState() {
+  const submitButton = document.getElementById("bookingSubmit");
+  const selectedTime = document.getElementById("appointmentTime")?.value || "";
+  if (submitButton) submitButton.disabled = !availableSlotTimes.has(selectedTime);
+}
+
+function resetSlots(message = "Please select a date to view available slots.") {
+  availableSlotTimes = new Set();
+  const timeInput = document.getElementById("appointmentTime");
+  const slotGrid = document.getElementById("timeSlotGrid");
+  const slotHelp = document.getElementById("slotHelp");
+  if (timeInput) timeInput.value = "";
+  if (slotGrid) slotGrid.innerHTML = "";
+  if (slotHelp) slotHelp.textContent = message;
+  updateBookingSubmitState();
+}
+
+function renderAvailabilitySlots(slots) {
+  const slotGrid = document.getElementById("timeSlotGrid");
+  const slotHelp = document.getElementById("slotHelp");
+  const timeInput = document.getElementById("appointmentTime");
+  if (!slotGrid) return;
+
+  if (timeInput) timeInput.value = "";
+  availableSlotTimes = new Set((slots || []).filter((slot) => slot.is_available).map((slot) => slot.time));
+
+  const visibleSlots = (slots || []).filter((slot) => slot.is_doctor_available || slot.is_booked);
+  if (visibleSlots.length === 0 || availableSlotTimes.size === 0) {
+    slotGrid.innerHTML = visibleSlots.map((slot) => `
+      <button type="button" class="time-slot unavailable" data-time="${escapeHtml(slot.time)}" data-available="false" data-booked="${slot.is_booked ? "true" : "false"}" disabled>
+        ${escapeHtml(slot.time)}<span>${escapeHtml(slot.is_booked ? "Booked" : slot.label || "Unavailable")}</span>
+      </button>
+    `).join("");
+    if (slotHelp) slotHelp.textContent = "No slots available for this date.";
+    updateBookingSubmitState();
+    return;
+  }
+
+  slotGrid.innerHTML = visibleSlots.map((slot) => {
+    const isEnabled = Boolean(slot.is_available);
+    const note = slot.is_booked ? "Booked" : slot.label || "Available";
+    return `
+      <button type="button" class="time-slot${isEnabled ? "" : " unavailable"}" data-time="${escapeHtml(slot.time)}" data-available="${isEnabled ? "true" : "false"}" data-booked="${slot.is_booked ? "true" : "false"}" ${isEnabled ? "" : "disabled"}>
+        ${escapeHtml(slot.time)}<span>${escapeHtml(note)}</span>
+      </button>
+    `;
+  }).join("");
+
+  if (slotHelp) slotHelp.textContent = "Choose one available time for this doctor.";
+  setupTimeSlotButtons();
+  updateBookingSubmitState();
+}
+
+async function fetchAvailabilityForSelectedDate() {
+  const dateInput = document.getElementById("appointmentDate");
+  const appointmentDate = dateInput?.value || "";
+  if (!appointmentDate) {
+    resetSlots();
+    return;
+  }
+  if (!currentDoctor?.id) return;
+
+  resetSlots("Loading available slots...");
+  try {
+    const data = await getJson(`/doctors/${currentDoctor.id}/availability?date=${encodeURIComponent(appointmentDate)}`);
+    renderAvailabilitySlots(data.slots || []);
+  } catch (error) {
+    resetSlots(error.message || "Could not load availability for this date.");
+  }
 }
 
 async function checkDoctorPageAuth() {
@@ -95,6 +172,7 @@ function displayDoctorDetails(doctor) {
   if (bookingFee) bookingFee.textContent = formatFee(doctor.fee);
 
   document.getElementById("doctorDetail").style.display = "grid";
+  fetchAvailabilityForSelectedDate();
 }
 
 async function bookAppointment(event) {
@@ -115,6 +193,11 @@ async function bookAppointment(event) {
 
   if (!appointmentData.appointment_time) {
     alert("Please select an appointment time.");
+    return;
+  }
+
+  if (!availableSlotTimes.has(appointmentData.appointment_time)) {
+    alert("Please choose a valid available slot.");
     return;
   }
 
@@ -141,6 +224,9 @@ async function bookAppointment(event) {
 
     const result = await response.json();
     if (!response.ok) {
+      if (response.status === 400 || response.status === 409) {
+        await fetchAvailabilityForSelectedDate();
+      }
       throw new Error(result.error || "Failed to book appointment");
     }
 
@@ -177,7 +263,8 @@ window.onclick = function (event) {
 
 document.addEventListener("DOMContentLoaded", async () => {
   setMinDate();
-  setupTimeSlotButtons();
+  resetSlots();
+  document.getElementById("appointmentDate")?.addEventListener("change", fetchAvailabilityForSelectedDate);
   await checkDoctorPageAuth();
   await fetchDoctorDetails();
   observeRevealElements();

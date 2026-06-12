@@ -108,6 +108,7 @@ class Doctor(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', backref='doctor_profile')
+    availability = db.relationship('DoctorAvailability', backref='doctor', lazy=True, cascade='all, delete-orphan')
 
     def to_dict(self):
         return {
@@ -125,6 +126,25 @@ class Doctor(db.Model):
             'experience_years': self.experience_years,
             'approval_status': self.approval_status or 'approved',
             'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class DoctorAvailability(db.Model):
+    __tablename__ = 'doctor_availability'
+
+    id = db.Column(db.Integer, primary_key=True)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'), nullable=False)
+    day_of_week = db.Column(db.String(20), nullable=False)
+    slot_time = db.Column(db.String(20), nullable=False)
+    is_available = db.Column(db.Boolean, default=True, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'doctor_id': self.doctor_id,
+            'day_of_week': self.day_of_week,
+            'slot_time': self.slot_time,
+            'is_available': bool(self.is_available)
         }
 
 

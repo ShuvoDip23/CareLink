@@ -1,6 +1,9 @@
 let editingDoctorId = null;
 let adminDoctors = [];
 
+const availabilityDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const availabilitySlots = ["09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"];
+
 function showAdminAlert(message, type = "success") {
   const alertBox = document.getElementById("adminAlert");
   if (!alertBox) return;
@@ -11,6 +14,75 @@ function showAdminAlert(message, type = "success") {
 function doctorExperienceLabel(doctor) {
   const years = Number(doctor.experience_years || 0);
   return years > 0 ? `${years} years` : "Experience not updated";
+}
+
+function defaultAvailabilityForSpecialty(specialty) {
+  const normalized = String(specialty || "").toLowerCase();
+  if (normalized.includes("cardiologist")) return ["09:00 AM", "10:00 AM", "11:00 AM"];
+  if (normalized.includes("dermatologist")) return ["12:00 PM", "02:00 PM", "03:00 PM", "04:00 PM"];
+  if (normalized.includes("ent specialist")) return ["11:00 AM", "12:00 PM", "04:00 PM", "05:00 PM"];
+  return availabilitySlots;
+}
+
+function renderAvailabilityEditor(selectedByDay = null) {
+  const editor = document.getElementById("availabilityEditor");
+  if (!editor) return;
+
+  const fallbackSlots = defaultAvailabilityForSpecialty(document.getElementById("doctorSpecialty")?.value || "");
+  editor.innerHTML = availabilityDays.map((day) => {
+    const selected = selectedByDay?.[day] || fallbackSlots;
+    return `
+      <div class="availability-day">
+        <strong>${escapeHtml(day)}</strong>
+        <div class="availability-slots">
+          ${availabilitySlots.map((slot) => {
+            const id = `availability-${day}-${slot}`.replace(/[^a-z0-9]/gi, "-");
+            const checked = selected.includes(slot) ? "checked" : "";
+            return `
+              <label for="${id}" class="availability-toggle">
+                <input id="${id}" type="checkbox" data-day="${escapeHtml(day)}" data-slot="${escapeHtml(slot)}" ${checked} />
+                <span>${escapeHtml(slot)}</span>
+              </label>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function selectedAvailabilityPayload() {
+  const entries = [];
+  document.querySelectorAll("#availabilityEditor input[type='checkbox']").forEach((input) => {
+    entries.push({
+      day_of_week: input.dataset.day,
+      slot_time: input.dataset.slot,
+      is_available: input.checked,
+    });
+  });
+  return { availability: entries };
+}
+
+async function loadDoctorAvailability(id) {
+  const data = await getJson(`/admin/doctors/${id}/availability`);
+  const selectedByDay = {};
+  availabilityDays.forEach((day) => {
+    selectedByDay[day] = (data.availability?.[day] || [])
+      .filter((slot) => slot.is_available)
+      .map((slot) => slot.time);
+  });
+  renderAvailabilityEditor(selectedByDay);
+}
+
+async function saveDoctorAvailability(id) {
+  const response = await apiFetch(`/admin/doctors/${id}/availability`, {
+    method: "PUT",
+    body: JSON.stringify(selectedAvailabilityPayload()),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Could not save doctor availability");
+  }
 }
 
 async function fetchPendingDoctors() {
@@ -168,11 +240,12 @@ function resetDoctorForm() {
   document.getElementById("doctorRating").value = "4.8";
   document.getElementById("doctorExperience").value = "5";
   document.getElementById("doctorStatus").value = "approved";
+  renderAvailabilityEditor();
   if (submitButton) submitButton.textContent = "Add approved doctor";
   if (cancelButton) cancelButton.style.display = "none";
 }
 
-function editDoctor(id) {
+async function editDoctor(id) {
   const doctor = adminDoctors.find((item) => Number(item.id) === Number(id));
   if (!doctor) {
     showAdminAlert("Could not find that doctor in the loaded list.", "error");
@@ -181,6 +254,12 @@ function editDoctor(id) {
 
   editingDoctorId = doctor.id;
   fillDoctorForm(doctor);
+  try {
+    await loadDoctorAvailability(doctor.id);
+  } catch (error) {
+    renderAvailabilityEditor();
+    showAdminAlert(error.message || "Could not load doctor availability.", "error");
+  }
 
   const submitButton = document.getElementById("doctorSubmitButton");
   const cancelButton = document.getElementById("cancelDoctorEdit");
@@ -207,9 +286,14 @@ async function saveDoctor(event) {
       throw new Error(data.error || "Could not save doctor");
     }
 
+    const savedDoctorId = editingDoctorId || data.id || data.doctor?.id;
+    if (savedDoctorId) {
+      await saveDoctorAvailability(savedDoctorId);
+    }
+
     form.reset();
     resetDoctorForm();
-    showAdminAlert(wasEditing ? "Doctor profile updated." : "Doctor added to the public directory.");
+    showAdminAlert(wasEditing ? "Doctor profile and availability updated." : "Doctor added with availability.");
     await refreshAdminDoctors();
   } catch (error) {
     showAdminAlert(error.message || "Could not save doctor.", "error");
@@ -229,9 +313,13 @@ function formatStatusLabel(value) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  renderAvailabilityEditor();
   refreshAdminDoctors();
 
   const form = document.getElementById("manualDoctorForm");
   form?.addEventListener("submit", saveDoctor);
   document.getElementById("cancelDoctorEdit")?.addEventListener("click", resetDoctorForm);
+  document.getElementById("doctorSpecialty")?.addEventListener("input", () => {
+    if (!editingDoctorId) renderAvailabilityEditor();
+  });
 });

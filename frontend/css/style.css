@@ -20,7 +20,9 @@
   --radius: 8px;
   --float-edge: 22px;
   --chat-float-height: 52px;
-  --float-gap: 20px;
+  --float-gap: 34px;
+  --sos-width: 154px;
+  --chat-panel-width: 420px;
   --chat-z: 70;
   --sos-z: 90;
   --emergency-modal-z: 120;
@@ -1237,7 +1239,7 @@ textarea {
   right: var(--float-edge);
   bottom: calc(var(--float-edge) + var(--chat-float-height) + 18px);
   z-index: calc(var(--chat-z) + 10);
-  width: min(420px, calc(100vw - 28px));
+  width: min(var(--chat-panel-width), calc(100vw - 28px));
   height: min(650px, calc(100vh - 120px));
   flex-direction: column;
   overflow: hidden;
@@ -2040,6 +2042,15 @@ svg {
   transform: translateY(-1px);
 }
 
+.time-slot.unavailable,
+.time-slot:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+  background: rgba(255, 255, 255, 0.025);
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
 .time-slot {
   display: grid;
   align-content: center;
@@ -2053,6 +2064,46 @@ svg {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 700;
+}
+
+.form-help {
+  margin: 6px 0 10px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.availability-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.availability-day {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.availability-slots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.availability-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #d6e5f7;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.availability-toggle input {
+  accent-color: #2563eb;
 }
 
 .appointment-float-card {
@@ -2964,7 +3015,7 @@ select option {
   right: var(--float-edge);
   bottom: calc(var(--float-edge) + var(--chat-float-height) + var(--float-gap));
   z-index: var(--sos-z);
-  min-width: 154px;
+  min-width: var(--sos-width);
   min-height: 58px;
   display: inline-grid;
   grid-template-columns: auto 1fr;
@@ -2977,6 +3028,12 @@ select option {
   background: linear-gradient(135deg, #b91c1c, #ef4444);
   box-shadow: 0 18px 42px rgba(127, 29, 29, 0.34);
   cursor: pointer;
+  transition: right 0.22s ease, bottom 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+body.chat-open .sos-float-btn {
+  right: calc(var(--float-edge) + min(var(--chat-panel-width), calc(100vw - 28px)) + 18px);
+  bottom: calc(var(--float-edge) + var(--chat-float-height) + 18px);
 }
 
 .sos-float-btn strong {
@@ -3221,7 +3278,29 @@ select option {
 
 @media (max-width: 760px) {
   .sos-float-btn {
-    min-width: 132px;
+    right: 14px;
+    bottom: calc(var(--float-edge) + var(--chat-float-height) + 28px);
+    min-width: 58px;
+    width: 58px;
+    min-height: 58px;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 8px;
+  }
+
+  .sos-float-btn span:not(.sos-pulse) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  body.chat-open .sos-float-btn {
+    right: auto;
+    left: 14px;
+    bottom: 14px;
   }
 
   .emergency-modal {

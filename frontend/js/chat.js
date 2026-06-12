@@ -45,6 +45,8 @@ async function openChatbot() {
     chatWidget.classList.add("flex");
   }
 
+  document.body.classList.add("chat-open");
+
   if (chatFloatBtn) {
     chatFloatBtn.classList.add("hidden");
   }
@@ -64,6 +66,8 @@ function closeChatbot() {
     chatWidget.classList.add("hidden");
     chatWidget.classList.remove("flex");
   }
+
+  document.body.classList.remove("chat-open");
 
   if (chatFloatBtn) {
     chatFloatBtn.classList.remove("hidden");

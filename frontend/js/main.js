@@ -619,8 +619,8 @@ function renderPlatformPreview(target) {
       <div class="mini-card-inner">
         <span class="mini-icon">${svgIcon("check")}</span>
         <div>
-          <div class="mini-title">Appointment Confirmed</div>
-          <div class="mini-sub">Today at 11:30 AM</div>
+          <div class="mini-title">Booking Preview</div>
+          <div class="mini-sub">Track confirmed visits</div>
         </div>
       </div>
     </aside>
@@ -657,7 +657,7 @@ function renderUpcomingAppointment(target, appointment) {
       <div class="mini-card-inner">
         <span class="mini-icon">${svgIcon("check")}</span>
         <div>
-          <div class="mini-title">Appointment Confirmed</div>
+          <div class="mini-title">Upcoming Visit</div>
           <div class="mini-sub">${formatDate(appointment.appointment_date)} at ${escapeHtml(appointment.appointment_time)}</div>
         </div>
       </div>
